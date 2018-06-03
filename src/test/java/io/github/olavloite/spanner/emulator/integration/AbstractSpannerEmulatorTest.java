@@ -66,7 +66,7 @@ public abstract class AbstractSpannerEmulatorTest {
     Builder builder = SpannerOptions.newBuilder();
     builder.setProjectId(projectId);
     builder.setCredentials(credentials);
-    builder.setHost(AbstractSpannerTest.HOST);
+    builder.setHost(AbstractSpannerTest.LOCALHOST);
 
     SpannerOptions options = builder.build();
     spanner = options.getService();
