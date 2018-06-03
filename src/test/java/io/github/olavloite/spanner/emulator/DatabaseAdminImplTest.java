@@ -34,7 +34,7 @@ public class DatabaseAdminImplTest {
     String credentialsPath = "emulator.json";
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
     SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project")
-        .setHost(AbstractSpannerTest.HOST).setCredentials(credentials).build();
+        .setHost(AbstractSpannerTest.getHost()).setCredentials(credentials).build();
     Spanner spanner = options.getService();
     instanceAdminClient = spanner.getInstanceAdminClient();
     databaseAdminClient = spanner.getDatabaseAdminClient();

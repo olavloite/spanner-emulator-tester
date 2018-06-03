@@ -31,8 +31,7 @@ import io.github.olavloite.spanner.emulator.util.CloudSpannerOAuthUtil;
 import io.github.olavloite.spanner.emulator.util.EnglishNumberToWords;
 
 public abstract class AbstractSpannerTest {
-  public static final String HOST = "https://emulator.googlecloudspanner.com:8443";
-  public static final String LOCALHOST = "https://localhost:8443";
+  private static final String DEFAULT_HOST = "https://emulator.googlecloudspanner.com:8443";
 
   protected static final String PROJECT_ID = "test-project";
   protected static final String INSTANCE_ID = "test-instance";
@@ -43,11 +42,15 @@ public abstract class AbstractSpannerTest {
   private static DatabaseClient databaseClient;
   private static BatchClient batchClient;
 
+  public static String getHost() {
+    return System.getProperty("host", DEFAULT_HOST);
+  }
+
   @BeforeClass
   public static void setup() {
     String credentialsPath = "emulator.json";
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
-    SpannerOptions options = SpannerOptions.newBuilder().setProjectId(PROJECT_ID).setHost(HOST)
+    SpannerOptions options = SpannerOptions.newBuilder().setProjectId(PROJECT_ID).setHost(getHost())
         .setCredentials(credentials).build();
     Spanner spanner = options.getService();
     instanceAdminClient = spanner.getInstanceAdminClient();

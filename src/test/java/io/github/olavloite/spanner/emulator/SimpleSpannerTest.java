@@ -66,8 +66,8 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
       long count = 0;
       while (rs.next()) {
         count++;
-        assertEquals(count, rs.getLong("NUMBER"));
-        assertEquals("one", rs.getString("NAME"));
+        assertEquals(count, rs.getLong("number"));
+        assertEquals("one", rs.getString("name"));
         assertEquals(count, rs.getLong(0));
         assertEquals("one", rs.getString(1));
       }
@@ -132,7 +132,7 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
     try (ResultSet rs = getDatabaseClient().singleUse()
         .executeQuery(Statement.of("select * from number where number=3"))) {
       assertTrue(rs.next());
-      assertEquals("three", rs.getString("NAME"));
+      assertEquals("three", rs.getString("name"));
     }
   }
 
@@ -152,7 +152,7 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
         .executeQuery(Statement.of("select * from number where number in (4,5,6)"))) {
       long current = 4l;
       while (rs.next()) {
-        assertEquals(EnglishNumberToWords.convert(current), rs.getString("NAME"));
+        assertEquals(EnglishNumberToWords.convert(current), rs.getString("name"));
         current++;
       }
     }
@@ -165,8 +165,8 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
             .bind("begin").to(10).bind("end").to(15).build())) {
       long count = 0;
       while (rs.next()) {
-        assertEquals(count + 10, rs.getLong("NUMBER"));
-        assertEquals("one", rs.getString("NAME"));
+        assertEquals(count + 10, rs.getLong("number"));
+        assertEquals("one", rs.getString("name"));
         assertEquals(count + 10, rs.getLong(0));
         assertEquals("one", rs.getString(1));
         count++;
@@ -179,8 +179,8 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
     Struct row = getDatabaseClient().singleUse().readRow("number", Key.of(1L),
         Arrays.asList("number", "name"));
     assertNotNull(row);
-    assertEquals(1L, row.getLong("NUMBER"));
-    assertEquals("one", row.getString("NAME"));
+    assertEquals(1L, row.getLong("number"));
+    assertEquals("one", row.getString("name"));
   }
 
 }

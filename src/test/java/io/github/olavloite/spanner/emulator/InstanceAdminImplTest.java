@@ -34,7 +34,7 @@ public class InstanceAdminImplTest {
     String credentialsPath = "emulator.json";
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
     SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project")
-        .setCredentials(credentials).setHost(AbstractSpannerTest.HOST).build();
+        .setCredentials(credentials).setHost(AbstractSpannerTest.getHost()).build();
     Spanner spanner = options.getService();
     instanceAdminClient = spanner.getInstanceAdminClient();
   }
@@ -88,9 +88,10 @@ public class InstanceAdminImplTest {
     List<InstanceConfig> configList = Lists.newArrayList(configs.iterateAll().iterator());
     assertEquals(12, configList.size());
 
-    assertEquals("Belgium", instanceAdminClient.getInstanceConfig("europe-west1").getDisplayName());
+    assertEquals("Belgium",
+        instanceAdminClient.getInstanceConfig("regional-europe-west1").getDisplayName());
     assertEquals("Montréal",
-        instanceAdminClient.getInstanceConfig("northamerica-northeast1").getDisplayName());
+        instanceAdminClient.getInstanceConfig("regional-northamerica-northeast1").getDisplayName());
     assertEquals("North America, Europe, and Asia",
         instanceAdminClient.getInstanceConfig("nam-eur-asia1").getDisplayName());
 
@@ -108,7 +109,7 @@ public class InstanceAdminImplTest {
     Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
         .createInstance(InstanceInfo.newBuilder(InstanceId.of("test-project", "test-instance"))
             .setDisplayName("Test Instance")
-            .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
+            .setInstanceConfigId(InstanceConfigId.of("test-project", "regional-europe-west1"))
             .setNodeCount(1).build());
     assertNotNull(operation);
     assertTrue(operation.getName()

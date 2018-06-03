@@ -37,7 +37,7 @@ public class PartitionSpannerTest extends AbstractSpannerTest {
       for (Partition partition : partitions) {
         try (ResultSet rs = tx.execute(partition)) {
           while (rs.next()) {
-            assertEquals(rs.getString("NAME"), EnglishNumberToWords.convert(rs.getLong("NUMBER")));
+            assertEquals(rs.getString("name"), EnglishNumberToWords.convert(rs.getLong("number")));
             count++;
           }
         }
@@ -58,7 +58,7 @@ public class PartitionSpannerTest extends AbstractSpannerTest {
       for (Partition partition : partitions) {
         try (ResultSet rs = tx.execute(partition)) {
           while (rs.next()) {
-            assertEquals(rs.getString("NAME"), EnglishNumberToWords.convert(rs.getLong("NUMBER")));
+            assertEquals(rs.getString("name"), EnglishNumberToWords.convert(rs.getLong("number")));
             count++;
           }
         }
