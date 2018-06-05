@@ -38,7 +38,7 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
 
   private void testCreateTable() {
     Operation<Void, UpdateDatabaseDdlMetadata> operation =
-        getDatabaseAdminClient().updateDatabaseDdl("test-instance", "test-database", Arrays.asList(
+        getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList(
             "create table number (number int64 not null, name string(100) not null) primary key (number)"),
             null).waitFor();
     assertTrue(operation.isDone());
