@@ -152,4 +152,16 @@ public abstract class AbstractSpannerTest {
     assertTrue(operation.isSuccessful());
   }
 
+  protected static void executeDdl(String ddl) {
+    executeDdl(Arrays.asList(ddl));
+  }
+
+  protected static void executeDdl(Iterable<String> ddl) {
+    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+        getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, ddl, null).waitFor();
+    operation.getResult();
+    assertTrue(operation.isDone());
+    assertTrue(operation.isSuccessful());
+  }
+
 }
