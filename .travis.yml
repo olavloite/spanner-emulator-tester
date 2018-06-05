@@ -1,0 +1,19 @@
+language: java
+before_install:
+- openssl aes-256-cbc -K $encrypted_cd9b96c723a5_key -iv $encrypted_cd9b96c723a5_iv -in emulator.json.enc -out emulator.json -d
+
+install: true
+addons:
+  sonarcloud:
+    organization: "olavloite-github"
+    token:
+      secure: "QnoYw48BifVV6cbEzIwomfutGt3q6S6uiNCCzVGPQR7LwZ+IX1eB9GOrNfpPmuxtEEoa2PLT1RKrG5Cp68OT4EF485DXzSfPFsBiqZeRsdrG0rKT4B58mT9zZbIoR4mLbOyaqLDYTuId9wNNBl/UkUwaHsZkxU9Vr7PK1nrnU8I6bi0OL8IDv0sOuelb8YMXenKRbFY/3hOGIijd5J2DFRsvqvxV0LQZ1CkLbpaxk5O2SB9BdwF5fGsaxPhqWlVUdA2eMSjIFT6NhdngC3VeRzAuB7dKgtJILP49rJKcLpk2rhtZPQEIbxC5121qMqH/qKkStGpN1EHbGB3XmUiAB4vRcgWuXvjUJlOHbbXMbyG1usOmc9YISsIjfQ7fQW+h9DCnPHOuXVEDmEo8bBm1cBNGCk43lNVTU18IsiKZBXLEUWUyAOXsnprMaS/WZ0Bawm1X6qGLL09B5wm0QciYJPAmlC9kilDVgBkIuTs1lwqwgJadkIU0Ia3/DM3NmKiDaoopeP0U92BnHEfk4LAIfYRk38wrYtLBHF8Nglos9xBnBvszUxmkFt7eqHLo3RUILRwmWHawZBQaGNAEPX/fTJ75tDLYMTxzPKCMoeyetNeIPxcZ+/qwhZoromJbbdwSF3t0BXoGscxKBoOv1JBJKyinqG9Tccj1qr9wUfFvVaI="
+
+jdk:
+  - oraclejdk8
+script:
+  - mvn clean verify org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+    - '$HOME/.sonar/cache'
