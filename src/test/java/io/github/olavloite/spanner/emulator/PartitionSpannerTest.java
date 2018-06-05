@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import java.util.Arrays;
 import java.util.List;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import com.google.cloud.spanner.BatchClient;
@@ -20,9 +21,14 @@ public class PartitionSpannerTest extends AbstractSpannerTest {
   private static final long NUMBER_OF_ROWS = 200;
 
   @BeforeClass
-  public static void createTestData() {
+  public static void before() {
     createNumberTable();
     insertTestNumbers(NUMBER_OF_ROWS);
+  }
+
+  @AfterClass
+  public static void after() {
+    dropNumberTable();
   }
 
   @Test

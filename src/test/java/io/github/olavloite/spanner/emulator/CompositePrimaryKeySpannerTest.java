@@ -83,7 +83,7 @@ public class CompositePrimaryKeySpannerTest extends AbstractSpannerTest {
       @Override
       public Void run(TransactionContext transaction) throws Exception {
         transaction.buffer(Mutation.delete("number",
-            KeySet.range(KeyRange.openClosed(Key.of(50L, "fifty"), Key.of(60L, "sixty")))));
+            KeySet.range(KeyRange.closedOpen(Key.of(50L, "fifty"), Key.of(60L)))));
         return null;
       }
     });
@@ -93,11 +93,11 @@ public class CompositePrimaryKeySpannerTest extends AbstractSpannerTest {
       assertEquals(NUMBER_OF_TEST_ROWS - 11, rs.getLong(0));
     }
     try (ResultSet rs = client.singleUse()
-        .executeQuery(Statement.of("select * from number where number>50 and number<=60"))) {
+        .executeQuery(Statement.of("select * from number where number>=50 and number<60"))) {
       assertFalse(rs.next());
     }
     try (ResultSet rs =
-        client.singleUse().executeQuery(Statement.of("select * from number where number=50"))) {
+        client.singleUse().executeQuery(Statement.of("select * from number where number=60"))) {
       assertTrue(rs.next());
       assertFalse(rs.next());
     }

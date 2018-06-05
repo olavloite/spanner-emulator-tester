@@ -112,6 +112,14 @@ public abstract class AbstractSpannerTest {
     assertTrue(operation.isSuccessful());
   }
 
+  protected static void createIndexOnNumberName() {
+    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+        getDatabaseAdminClient().updateDatabaseDdl("test-instance", "test-database",
+            Arrays.asList("create index idx_number_name on number (name)"), null).waitFor();
+    assertTrue(operation.isDone());
+    assertTrue(operation.isSuccessful());
+  }
+
   protected static void insertTestNumbers(long rows) {
     TransactionRunner runner = getDatabaseClient().readWriteTransaction();
     runner.run(new TransactionCallable<Void>() {
@@ -125,6 +133,14 @@ public abstract class AbstractSpannerTest {
         return null;
       }
     });
+  }
+
+  protected static void dropNumberTable() {
+    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+        getDatabaseAdminClient().updateDatabaseDdl("test-instance", "test-database",
+            Arrays.asList("drop table number"), null).waitFor();
+    assertTrue(operation.isDone());
+    assertTrue(operation.isSuccessful());
   }
 
 }
