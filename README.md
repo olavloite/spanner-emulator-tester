@@ -9,6 +9,6 @@ In addition to the test cases in this project, the emulator is also used for all
 The emulator is leightweight and can be run either on your local development machine or on a small cloud server. The main features of the emulatore are:
 * It is intended for test and development purposes. That means that it does **not** in any way try to emulate the **scalability** of Google Cloud Spanner. It does however mean that it is **a lot faster** than Cloud Spanner when it comes to creating a small test database.
 * The data that you write to the emulator are **persisted**. You could use the emulator for both automated testing as well as development.
-* It is **leightweight**. You could run it on your local development machine or you could run it on a light cloud server.
+* It is **lightweight**. You could run it on your local development machine or you could run it on a light cloud server.
 
 The current version of the emulator runs as a separate process, but one of the planned features is allowing the emulator to be embedded and ran as an in-memory database.
