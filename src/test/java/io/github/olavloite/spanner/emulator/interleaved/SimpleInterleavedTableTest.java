@@ -2,6 +2,8 @@ package io.github.olavloite.spanner.emulator.interleaved;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
@@ -16,19 +18,24 @@ import io.github.olavloite.spanner.emulator.AbstractSpannerTest;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SimpleInterleavedTableTest extends AbstractSpannerTest {
+  private static final Log log = LogFactory.getLog(SimpleInterleavedTableTest.class);
 
   @BeforeClass
   public static void createTables() {
+    log.info("Creating tables");
     executeDdl(
         "create table test_parent (parent_id int64 not null, name string(100)) primary key (parent_id)");
     executeDdl(
         "create table test_child (parent_id int64 not null, child_id int64 not null, child_name string(100)) primary key (parent_id, child_id), interleave in parent test_parent");
+    log.info("Finished creating tables");
   }
 
   @AfterClass
   public static void dropTables() {
+    log.info("Dropping tables");
     executeDdl("drop table test_child");
     executeDdl("drop table test_parent");
+    log.info("Finished dropping tables");
   }
 
   @Test

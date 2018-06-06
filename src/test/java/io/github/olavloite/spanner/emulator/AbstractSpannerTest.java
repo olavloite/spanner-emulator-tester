@@ -33,6 +33,10 @@ import io.github.olavloite.spanner.emulator.util.CloudSpannerOAuthUtil;
 import io.github.olavloite.spanner.emulator.util.EnglishNumberToWords;
 
 public abstract class AbstractSpannerTest {
+  static {
+    System.setProperty("java.util.logging.config.file", "log-config.properties");
+  }
+
   private static final String DEFAULT_HOST = "https://emulator.googlecloudspanner.com:8443";
 
   protected static final String PROJECT_ID = "test-project";
