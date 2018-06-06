@@ -12,10 +12,10 @@
 	</properties>
 
 	<groupId>io.github.olavloite</groupId>
-	<artifactId>spanner-emulator-admin</artifactId>
+	<artifactId>spanner-emulator-tester</artifactId>
 	<version>0.1-SNAPSHOT</version>
-	<name>spanner-emulator-admin</name>
-	<description>Google Cloud Spanner Emulator Administrator</description>
+	<name>spanner-emulator-tester</name>
+	<description>Google Cloud Spanner Emulator Tester</description>
 	<licenses>
 		<license>
 			<name>MIT License</name>
