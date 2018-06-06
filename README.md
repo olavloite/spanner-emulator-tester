@@ -1,4 +1,4 @@
-# spanner-emulator-tester
+# spanner-emulator-tester [![Build Status](https://travis-ci.org/olavloite/spanner-emulator-tester.svg?branch=master)](https://travis-ci.org/olavloite/spanner-emulator-tester)
 
 Test project for Google Cloud Spanner Emulator.
 
