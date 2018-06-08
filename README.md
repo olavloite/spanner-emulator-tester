@@ -4,7 +4,7 @@ Test project for Google Cloud Spanner Emulator.
 Send me an email at koloite@gmail.com if you are interested in a trial account or license for the emulator.
 
 ## Try it out
-You could also try the emulator out by writing a small test case and submitting it as a pull request to this project. Have a look at the following pull request for a simple example: https://github.com/olavloite/spanner-emulator-tester/pull/5 . The pull request is automatically built and tested against an emulator running on a small server.
+You could also try the emulator out by writing a small test case and submitting it as a pull request to this project. Have a look at the test class for a simple example that you could use as a template for your own test case: https://github.com/olavloite/spanner-emulator-tester/blob/master/src/test/java/io/github/olavloite/spanner/emulator/tryitout/ExampleTryItOutTest.java . Submit your test case as a pull request and it will automatically be built and tested against an emulator running on a small server.
 
 ## Description
 This is a tester project for an emulator of Google Cloud Spanner, the horizontally scalable, globally consistent, relational database service from Google. When developing for Google Cloud Spanner, you normally have to do all your development work and testing against an actual Cloud Spanner instance instead of an emulator. This test project contains test cases that are run against a Google Cloud Spanner emulator that could be used for development and test purposes. This test project is intended to give an idea about what capabilities the emulator support.
