@@ -134,11 +134,15 @@ public abstract class AbstractSpannerTest {
   }
 
   protected static void insertTestNumbers(long rows) {
+    insertTestNumbers(1, rows);
+  }
+
+  protected static void insertTestNumbers(long start, long noOfRows) {
     TransactionRunner runner = getDatabaseClient().readWriteTransaction();
     runner.run(new TransactionCallable<Void>() {
       @Override
       public Void run(TransactionContext transaction) throws Exception {
-        for (long counter = 1l; counter <= rows; counter++) {
+        for (long counter = start; counter < (start + noOfRows); counter++) {
           Mutation mutation = Mutation.newInsertBuilder("number").set("number").to(counter)
               .set("name").to(EnglishNumberToWords.convert(counter)).build();
           transaction.buffer(mutation);
