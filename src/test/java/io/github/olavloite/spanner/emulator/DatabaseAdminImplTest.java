@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Random;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,6 +30,9 @@ public class DatabaseAdminImplTest {
   private static InstanceAdminClient instanceAdminClient;
   private static DatabaseAdminClient databaseAdminClient;
 
+  private static InstanceId id1;
+  private static InstanceId id2;
+
   @BeforeClass
   public static void setup() {
     String credentialsPath = "emulator.json";
@@ -39,18 +43,16 @@ public class DatabaseAdminImplTest {
     instanceAdminClient = spanner.getInstanceAdminClient();
     databaseAdminClient = spanner.getDatabaseAdminClient();
 
-    // First delete anything that might be there
-    clearCurrentInstanceAndDatabases();
-    // Then create a new test instance
+    // Create a new test instance
+    id1 = InstanceId.of("test-project", "test-instance-" + new Random().nextInt(1000000));
     Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
-        .createInstance(InstanceInfo.newBuilder(InstanceId.of("test-project", "test-instance"))
-            .setDisplayName("Test Instance")
+        .createInstance(InstanceInfo.newBuilder(id1).setDisplayName("Test Instance")
             .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
             .setNodeCount(1).build());
     assertTrue(operation.isDone());
+    id2 = InstanceId.of("test-project", "test-instance-2-" + new Random().nextInt(1000000));
     operation = instanceAdminClient
-        .createInstance(InstanceInfo.newBuilder(InstanceId.of("test-project", "test-instance-2"))
-            .setDisplayName("Test Instance 2")
+        .createInstance(InstanceInfo.newBuilder(id2).setDisplayName("Test Instance 2")
             .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
             .setNodeCount(1).build());
     assertTrue(operation.isDone());
@@ -65,9 +67,12 @@ public class DatabaseAdminImplTest {
     Iterator<Instance> iterator = instanceAdminClient.listInstances().iterateAll().iterator();
     while (iterator.hasNext()) {
       Instance instance = iterator.next();
-      Page<Database> databases = databaseAdminClient.listDatabases(instance.getId().getInstance());
-      databases.iterateAll().forEach(d -> d.drop());
-      instanceAdminClient.deleteInstance(instance.getId().getInstance());
+      if (instance.getId().equals(id1) || instance.getId().equals(id2)) {
+        Page<Database> databases =
+            databaseAdminClient.listDatabases(instance.getId().getInstance());
+        databases.iterateAll().forEach(d -> d.drop());
+        instanceAdminClient.deleteInstance(instance.getId().getInstance());
+      }
     }
   }
 
@@ -81,56 +86,69 @@ public class DatabaseAdminImplTest {
     testCreateDatabaseWithDDL();
     // Try to get the database
     testGetDatabase();
+    // Drop all created databases
+    dropAllDatabases();
   }
 
   private void dropAllDatabases() {
     Iterator<Instance> iterator = instanceAdminClient.listInstances().iterateAll().iterator();
     while (iterator.hasNext()) {
-      Page<Database> databases =
-          databaseAdminClient.listDatabases(iterator.next().getId().getInstance());
-      databases.iterateAll().forEach(d -> d.drop());
+      Instance instance = iterator.next();
+      if (instance.getId().equals(id1) || instance.getId().equals(id2)) {
+        Page<Database> databases =
+            databaseAdminClient.listDatabases(instance.getId().getInstance());
+        databases.iterateAll().forEach(d -> d.drop());
+      }
     }
   }
 
   private void testCreateDatabase() {
     Operation<Database, CreateDatabaseMetadata> operation = databaseAdminClient
-        .createDatabase("test-instance", "test-database", Collections.emptyList());
+        .createDatabase(id1.getInstance(), "test-database", Collections.emptyList());
     assertNotNull(operation);
     assertTrue(operation.getName().startsWith(
-        "projects/test-project/instances/test-instance/databases/test-database/operations/"));
+        String.format("projects/test-project/instances/%s/databases/test-database/operations/",
+            id1.getInstance())));
     operation = operation.waitFor();
     Database database = operation.getResult();
     assertNotNull(database);
-    assertEquals("projects/test-project/instances/test-instance/databases/test-database",
-        database.getId().getName());
+    assertEquals(String.format("projects/test-project/instances/%s/databases/test-database",
+        id1.getInstance()), database.getId().getName());
   }
 
   private void testCreateDatabase2() {
     Operation<Database, CreateDatabaseMetadata> operation = databaseAdminClient
-        .createDatabase("test-instance-2", "test-database", Collections.emptyList());
+        .createDatabase(id2.getInstance(), "test-database", Collections.emptyList());
     assertNotNull(operation);
     assertTrue(operation.getName().startsWith(
-        "projects/test-project/instances/test-instance-2/databases/test-database/operations/"));
+        String.format("projects/test-project/instances/%s/databases/test-database/operations/",
+            id2.getInstance())));
     operation = operation.waitFor();
     Database database = operation.getResult();
     assertNotNull(database);
-    assertEquals("projects/test-project/instances/test-instance-2/databases/test-database",
-        database.getId().getName());
+    assertEquals(String.format("projects/test-project/instances/%s/databases/test-database",
+        id2.getInstance()), database.getId().getName());
   }
 
   private void testCreateDatabaseWithDDL() {
     Operation<Database, CreateDatabaseMetadata> operation = databaseAdminClient.createDatabase(
-        "test-instance", "test-database-with-ddl",
+        id1.getInstance(), "test-database-with-ddl",
         Arrays.asList("create table foo (id int64 not null, name string(100)) primary key (id)"));
-    assertTrue(operation.getName().startsWith(
-        "projects/test-project/instances/test-instance/databases/test-database-with-ddl/operations/"));
+    assertTrue(operation.getName()
+        .startsWith(String.format(
+            "projects/test-project/instances/%s/databases/test-database-with-ddl/operations/",
+            id1.getInstance())));
   }
 
   private void testGetDatabase() {
-    assertEquals("projects/test-project/instances/test-instance/databases/test-database",
-        databaseAdminClient.getDatabase("test-instance", "test-database").getId().getName());
-    assertEquals("projects/test-project/instances/test-instance-2/databases/test-database",
-        databaseAdminClient.getDatabase("test-instance-2", "test-database").getId().getName());
+    assertEquals(
+        String.format("projects/test-project/instances/%s/databases/test-database",
+            id1.getInstance()),
+        databaseAdminClient.getDatabase(id1.getInstance(), "test-database").getId().getName());
+    assertEquals(
+        String.format("projects/test-project/instances/%s/databases/test-database",
+            id2.getInstance()),
+        databaseAdminClient.getDatabase(id2.getInstance(), "test-database").getId().getName());
   }
 
 }
