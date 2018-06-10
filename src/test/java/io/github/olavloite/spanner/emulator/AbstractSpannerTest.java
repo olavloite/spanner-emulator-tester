@@ -4,6 +4,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import com.google.api.gax.paging.Page;
@@ -36,11 +38,12 @@ public abstract class AbstractSpannerTest {
   static {
     System.setProperty("java.util.logging.config.file", "log-config.properties");
   }
+  private static final Log log = LogFactory.getLog(AbstractSpannerTest.class);
 
   private static final String DEFAULT_HOST = "https://emulator.googlecloudspanner.com:8443";
 
   protected static final String PROJECT_ID = "test-project";
-  protected static final String INSTANCE_ID = "test-instance-" + new Random().nextInt(1000000);
+  protected static String INSTANCE_ID;
   protected static final String DATABASE_ID = "test-database";
 
   private static InstanceAdminClient instanceAdminClient;
@@ -54,6 +57,8 @@ public abstract class AbstractSpannerTest {
 
   @BeforeClass
   public static void setup() {
+    INSTANCE_ID = "test-instance-" + new Random().nextInt(100000000);
+    log.info("Setting up test with instance id " + INSTANCE_ID);
     try {
       String credentialsPath = "emulator.json";
       GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
@@ -77,14 +82,17 @@ public abstract class AbstractSpannerTest {
       Database database = createDatabase.waitFor().getResult();
       databaseClient = spanner.getDatabaseClient(database.getId());
       batchClient = spanner.getBatchClient(database.getId());
+      log.info("Finished setting up test");
     } catch (Throwable t) {
-      t.printStackTrace();
+      log.error(t.getMessage(), t);
     }
   }
 
   @AfterClass
   public static void teardown() {
     clearCurrentInstanceAndDatabases();
+    log.info("Dropped instance " + INSTANCE_ID);
+    INSTANCE_ID = null;
   }
 
   private static void clearCurrentInstanceAndDatabases() {
@@ -134,11 +142,15 @@ public abstract class AbstractSpannerTest {
   }
 
   protected static void insertTestNumbers(long rows) {
+    insertTestNumbers(1, rows);
+  }
+
+  protected static void insertTestNumbers(long start, long noOfRows) {
     TransactionRunner runner = getDatabaseClient().readWriteTransaction();
     runner.run(new TransactionCallable<Void>() {
       @Override
       public Void run(TransactionContext transaction) throws Exception {
-        for (long counter = 1l; counter <= rows; counter++) {
+        for (long counter = start; counter < (start + noOfRows); counter++) {
           Mutation mutation = Mutation.newInsertBuilder("number").set("number").to(counter)
               .set("name").to(EnglishNumberToWords.convert(counter)).build();
           transaction.buffer(mutation);
