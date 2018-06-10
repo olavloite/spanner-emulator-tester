@@ -3,8 +3,10 @@ package io.github.olavloite.spanner.emulator;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import java.util.ArrayList;
 import java.util.List;
-import org.junit.AfterClass;
+import java.util.Random;
+import java.util.stream.Collectors;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import com.google.api.gax.paging.Page;
@@ -28,6 +30,7 @@ import io.github.olavloite.spanner.emulator.util.CloudSpannerOAuthUtil;
 
 public class InstanceAdminImplTest {
   private static InstanceAdminClient instanceAdminClient;
+  private List<InstanceId> createdInstances = new ArrayList<>();
 
   @BeforeClass
   public static void setup() {
@@ -39,20 +42,13 @@ public class InstanceAdminImplTest {
     instanceAdminClient = spanner.getInstanceAdminClient();
   }
 
-  @AfterClass
-  public static void teardown() {
-    Page<Instance> instances = instanceAdminClient.listInstances();
-    instances.iterateAll()
-        .forEach(i -> instanceAdminClient.deleteInstance(i.getId().getInstance()));
-  }
-
   @Test
   public void testInstanceAdmin() {
     assertNotNull(instanceAdminClient);
-    // Remove all instances
-    deleteAllInstances();
+    // TODO: Reinstate this test once projects can be created programmatically
+    // deleteAllInstances();
     // Assert no instances at startup
-    testInitialNoInstances();
+    // testInitialNoInstances();
     // Assert instance configs
     testInstanceConfigs();
     // Create a new instance
@@ -67,14 +63,33 @@ public class InstanceAdminImplTest {
     testCreateAnotherInstance();
     // Try to get an instance that does not exist
     testGetInstanceNotExists();
+    // Remove all instances
+    deleteAllCreatedInstances();
   }
 
+  /**
+   * Reinstate once projects can be created programmatically
+   */
+  @SuppressWarnings("unused")
   private void deleteAllInstances() {
     Page<Instance> instances = instanceAdminClient.listInstances();
     instances.iterateAll()
         .forEach(i -> instanceAdminClient.deleteInstance(i.getId().getInstance()));
   }
 
+  private void deleteAllCreatedInstances() {
+    Page<Instance> instances = instanceAdminClient.listInstances();
+    instances.iterateAll().forEach(i -> {
+      if (createdInstances.contains(i.getId())) {
+        instanceAdminClient.deleteInstance(i.getId().getInstance());
+      }
+    });
+  }
+
+  /**
+   * Reinstate this test once a project can be created programmatically
+   */
+  @SuppressWarnings("unused")
   private void testInitialNoInstances() {
     Page<Instance> instances = instanceAdminClient.listInstances();
     assertNotNull(instances);
@@ -106,20 +121,22 @@ public class InstanceAdminImplTest {
   }
 
   private void testCreateInstance() {
+    InstanceId id = InstanceId.of("test-project", "test-instance-" + new Random().nextInt(1000000));
     Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
-        .createInstance(InstanceInfo.newBuilder(InstanceId.of("test-project", "test-instance"))
-            .setDisplayName("Test Instance")
+        .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance")
             .setInstanceConfigId(InstanceConfigId.of("test-project", "regional-europe-west1"))
             .setNodeCount(1).build());
+    createdInstances.add(id);
     assertNotNull(operation);
-    assertTrue(operation.getName()
-        .startsWith("projects/test-project/instances/test-instance/operations/"));
+    assertTrue(operation.getName().startsWith(
+        String.format("projects/test-project/instances/%s/operations/", id.getInstance())));
     // check that the instance was created
     assertEquals(1,
-        Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).size());
+        Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
+            .filter(i -> createdInstances.contains(i.getId())).collect(Collectors.toList()).size());
     assertEquals("Test Instance",
-        instanceAdminClient.getInstance("test-instance").getDisplayName());
-    assertEquals(1, instanceAdminClient.getInstance("test-instance").getNodeCount());
+        instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
+    assertEquals(1, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
   }
 
   private void testGetInstanceNotExists() {
@@ -134,28 +151,27 @@ public class InstanceAdminImplTest {
   }
 
   private void testUpdateInstance() {
+    InstanceId id = createdInstances.get(0);
     Operation<Instance, UpdateInstanceMetadata> operation = instanceAdminClient
-        .updateInstance(InstanceInfo.newBuilder(InstanceId.of("test-project", "test-instance"))
-            .setDisplayName("Test Instance 2")
+        .updateInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance 2")
             .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
             .setNodeCount(2).build(), InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
     assertNotNull(operation);
-    assertTrue(operation.getName()
-        .startsWith("projects/test-project/instances/test-instance/operations/"));
+    assertTrue(operation.getName().startsWith(
+        String.format("projects/test-project/instances/%s/operations/", id.getInstance())));
     // check that the instance was updated
     assertEquals("Test Instance 2",
-        instanceAdminClient.getInstance("test-instance").getDisplayName());
-    assertEquals(2, instanceAdminClient.getInstance("test-instance").getNodeCount());
+        instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
+    assertEquals(2, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
   }
 
   private void testCreateInstanceExists() {
     boolean exception = false;
     try {
-      instanceAdminClient
-          .createInstance(InstanceInfo.newBuilder(InstanceId.of("test-project", "test-instance"))
-              .setDisplayName("Test Instance")
-              .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
-              .setNodeCount(1).build());
+      InstanceId id = createdInstances.get(0);
+      instanceAdminClient.createInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance")
+          .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1")).setNodeCount(1)
+          .build());
     } catch (SpannerException e) {
       exception = true;
       assertEquals(ErrorCode.ALREADY_EXISTS, e.getErrorCode());
@@ -179,20 +195,23 @@ public class InstanceAdminImplTest {
   }
 
   private void testCreateAnotherInstance() {
-    Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient.createInstance(
-        InstanceInfo.newBuilder(InstanceId.of("test-project", "another-test-instance"))
-            .setDisplayName("Another Test Instance")
+    InstanceId id =
+        InstanceId.of("test-project", "another-test-instance-" + new Random().nextInt(1000000));
+    Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
+        .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Another Test Instance")
             .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
             .setNodeCount(1).build());
+    createdInstances.add(id);
     assertNotNull(operation);
-    assertTrue(operation.getName()
-        .startsWith("projects/test-project/instances/another-test-instance/operations/"));
+    assertTrue(operation.getName().startsWith(
+        String.format("projects/test-project/instances/%s/operations/", id.getInstance())));
     // check that the instance was created
     assertEquals(2,
-        Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).size());
+        Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
+            .filter(i -> createdInstances.contains(i.getId())).collect(Collectors.toList()).size());
     assertEquals("Another Test Instance",
-        instanceAdminClient.getInstance("another-test-instance").getDisplayName());
-    assertEquals(1, instanceAdminClient.getInstance("another-test-instance").getNodeCount());
+        instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
+    assertEquals(1, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
   }
 
 }
