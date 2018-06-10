@@ -84,4 +84,21 @@ public class QueryWithForceIndexTest extends AbstractSpannerTest {
     assertEquals(getRecordCount(), count);
   }
 
+  @Test
+  public void test3_SelectWithForceIndex_InvalidIndexName() {
+    ReadOnlyTransaction tx = getDatabaseClient().readOnlyTransaction();
+    long count = 0L;
+    // TODO: The emulator should throw an exception if an invalid index name is specified
+    try (ResultSet rs = tx.executeQuery(
+        Statement.of("select * from person@{FORCE_INDEX=non_existent_index} order by last_name"))) {
+      String prevLastName = "";
+      while (rs.next()) {
+        assertTrue(prevLastName.compareTo(rs.getString("LAST_NAME")) <= 0);
+        prevLastName = rs.getString("LAST_NAME");
+        count++;
+      }
+    }
+    assertEquals(getRecordCount(), count);
+  }
+
 }
