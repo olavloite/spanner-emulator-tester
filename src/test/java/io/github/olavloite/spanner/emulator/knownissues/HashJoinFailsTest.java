@@ -28,13 +28,17 @@ public class HashJoinFailsTest extends AbstractSpannerTest {
 
   @Test
   public void testHashJoin() {
-    expected.expect(IllegalArgumentException.class);
-    expected.expectMessage("Field not found: hashjoin");
     // This works
     try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
         "select n1.number as `hashjoin` from number n1 inner hash join number n2 on n1.number=n2.number"))) {
       assertTrue(rs.next());
       assertEquals(1L, rs.getLong("hashjoin"));
+    }
+    // And this works
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
+        "select n1.number as `hash join` from number n1 inner join number n2 on n1.number=n2.number"))) {
+      assertTrue(rs.next());
+      assertEquals(1L, rs.getLong("hash join"));
     }
     // This does not
     try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
@@ -43,6 +47,8 @@ public class HashJoinFailsTest extends AbstractSpannerTest {
       // the column is automatically renamed to 'join'
       assertEquals(1L, rs.getLong("join"));
       // this column won't be found
+      expected.expect(IllegalArgumentException.class);
+      expected.expectMessage("Field not found: hash join");
       assertEquals(1L, rs.getLong("hash join"));
     }
   }
