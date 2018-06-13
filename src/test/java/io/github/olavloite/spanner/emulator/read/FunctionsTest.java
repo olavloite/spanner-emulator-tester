@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
@@ -131,7 +132,6 @@ public class FunctionsTest extends AbstractSpannerTest {
     }
   }
 
-
   @Test
   public void castStringToFloat64() {
     try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(
@@ -168,6 +168,26 @@ public class FunctionsTest extends AbstractSpannerTest {
         Statement.of("select cast('-inf' as float64) as test from number where number=1"))) {
       assertTrue(rs.next());
       assertEquals(Double.NEGATIVE_INFINITY, rs.getDouble("test"), 0.0D);
+      assertFalse(rs.next());
+    }
+  }
+
+  @Test
+  public void castStringToBytes() {
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(
+        Statement.of("select cast('@' as bytes) as test from number where number=1"))) {
+      assertTrue(rs.next());
+      assertEquals(ByteArray.copyFrom("@"), rs.getBytes("test"));
+      assertFalse(rs.next());
+    }
+  }
+
+  @Test
+  public void castBytesToString() {
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(
+        Statement.of("select cast(b'\\xc2\\xa9' as string) as test from number where number=1"))) {
+      assertTrue(rs.next());
+      assertEquals("©", rs.getString("test"));
       assertFalse(rs.next());
     }
   }
