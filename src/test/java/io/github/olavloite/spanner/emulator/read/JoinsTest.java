@@ -220,6 +220,38 @@ public class JoinsTest extends AbstractSpannerTest {
     assertEquals(ADDRESS_RECORD_WITH_PERSON_COUNT, count);
   }
 
+  @Test
+  public void test13_SelectStarFromAddressInnerJoinPersonWithHashJoinHint() {
+    long count = 0L;
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
+        "select * from address inner join@{JOIN_TYPE=HASH_JOIN} person on address.person_id=person.person_id"))) {
+      while (rs.next()) {
+        count++;
+      }
+    }
+    assertEquals(ADDRESS_RECORD_WITH_PERSON_COUNT, count);
+  }
+
+  @Test
+  public void test14_SelectStarFromAddressInnerJoinPersonWithForceJoinOrderHint() {
+    long count = 0L;
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
+        "select * from address inner join@{FORCE_JOIN_ORDER=true} person on address.person_id=person.person_id"))) {
+      while (rs.next()) {
+        count++;
+      }
+    }
+    assertEquals(ADDRESS_RECORD_WITH_PERSON_COUNT, count);
+    count = 0L;
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
+        "select * from address inner join@{FORCE_JOIN_ORDER   \n=\ttrue} person on address.person_id=person.person_id"))) {
+      while (rs.next()) {
+        count++;
+      }
+    }
+    assertEquals(ADDRESS_RECORD_WITH_PERSON_COUNT, count);
+  }
+
   private long getPersonRecordCount() {
     long res = 0L;
     try (ResultSet rs =
