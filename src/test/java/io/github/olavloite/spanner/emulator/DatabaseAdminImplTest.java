@@ -37,24 +37,28 @@ public class DatabaseAdminImplTest {
   public static void setup() {
     String credentialsPath = "emulator.json";
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
-    SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project")
-        .setHost(AbstractSpannerTest.getHost()).setCredentials(credentials).build();
+    SpannerOptions options =
+        SpannerOptions.newBuilder().setProjectId(AbstractSpannerTest.PROJECT_ID)
+            .setHost(AbstractSpannerTest.getHost()).setCredentials(credentials).build();
     Spanner spanner = options.getService();
     instanceAdminClient = spanner.getInstanceAdminClient();
     databaseAdminClient = spanner.getDatabaseAdminClient();
 
     // Create a new test instance
-    id1 = InstanceId.of("test-project", "test-instance-" + new Random().nextInt(1000000));
+    id1 = InstanceId.of(AbstractSpannerTest.PROJECT_ID,
+        "test-instance-" + new Random().nextInt(1000000));
     Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
         .createInstance(InstanceInfo.newBuilder(id1).setDisplayName("Test Instance")
-            .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
+            .setInstanceConfigId(
+                InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "europe-west1"))
             .setNodeCount(1).build());
     assertTrue(operation.isDone());
-    id2 = InstanceId.of("test-project", "test-instance-2-" + new Random().nextInt(1000000));
-    operation = instanceAdminClient
-        .createInstance(InstanceInfo.newBuilder(id2).setDisplayName("Test Instance 2")
-            .setInstanceConfigId(InstanceConfigId.of("test-project", "europe-west1"))
-            .setNodeCount(1).build());
+    id2 = InstanceId.of(AbstractSpannerTest.PROJECT_ID,
+        "test-instance-2-" + new Random().nextInt(1000000));
+    operation = instanceAdminClient.createInstance(InstanceInfo.newBuilder(id2)
+        .setDisplayName("Test Instance 2")
+        .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "europe-west1"))
+        .setNodeCount(1).build());
     assertTrue(operation.isDone());
   }
 
@@ -106,48 +110,47 @@ public class DatabaseAdminImplTest {
     Operation<Database, CreateDatabaseMetadata> operation = databaseAdminClient
         .createDatabase(id1.getInstance(), "test-database", Collections.emptyList());
     assertNotNull(operation);
-    assertTrue(operation.getName().startsWith(
-        String.format("projects/test-project/instances/%s/databases/test-database/operations/",
-            id1.getInstance())));
+    assertTrue(operation.getName()
+        .startsWith(String.format("projects/%s/instances/%s/databases/test-database/operations/",
+            AbstractSpannerTest.PROJECT_ID, id1.getInstance())));
     operation = operation.waitFor();
     Database database = operation.getResult();
     assertNotNull(database);
-    assertEquals(String.format("projects/test-project/instances/%s/databases/test-database",
-        id1.getInstance()), database.getId().getName());
+    assertEquals(String.format("projects/%s/instances/%s/databases/test-database",
+        AbstractSpannerTest.PROJECT_ID, id1.getInstance()), database.getId().getName());
   }
 
   private void testCreateDatabase2() {
     Operation<Database, CreateDatabaseMetadata> operation = databaseAdminClient
         .createDatabase(id2.getInstance(), "test-database", Collections.emptyList());
     assertNotNull(operation);
-    assertTrue(operation.getName().startsWith(
-        String.format("projects/test-project/instances/%s/databases/test-database/operations/",
-            id2.getInstance())));
+    assertTrue(operation.getName()
+        .startsWith(String.format("projects/%s/instances/%s/databases/test-database/operations/",
+            AbstractSpannerTest.PROJECT_ID, id2.getInstance())));
     operation = operation.waitFor();
     Database database = operation.getResult();
     assertNotNull(database);
-    assertEquals(String.format("projects/test-project/instances/%s/databases/test-database",
-        id2.getInstance()), database.getId().getName());
+    assertEquals(String.format("projects/%s/instances/%s/databases/test-database",
+        AbstractSpannerTest.PROJECT_ID, id2.getInstance()), database.getId().getName());
   }
 
   private void testCreateDatabaseWithDDL() {
     Operation<Database, CreateDatabaseMetadata> operation = databaseAdminClient.createDatabase(
         id1.getInstance(), "test-database-with-ddl",
         Arrays.asList("create table foo (id int64 not null, name string(100)) primary key (id)"));
-    assertTrue(operation.getName()
-        .startsWith(String.format(
-            "projects/test-project/instances/%s/databases/test-database-with-ddl/operations/",
-            id1.getInstance())));
+    assertTrue(operation.getName().startsWith(
+        String.format("projects/%s/instances/%s/databases/test-database-with-ddl/operations/",
+            AbstractSpannerTest.PROJECT_ID, id1.getInstance())));
   }
 
   private void testGetDatabase() {
     assertEquals(
-        String.format("projects/test-project/instances/%s/databases/test-database",
-            id1.getInstance()),
+        String.format("projects/%s/instances/%s/databases/test-database",
+            AbstractSpannerTest.PROJECT_ID, id1.getInstance()),
         databaseAdminClient.getDatabase(id1.getInstance(), "test-database").getId().getName());
     assertEquals(
-        String.format("projects/test-project/instances/%s/databases/test-database",
-            id2.getInstance()),
+        String.format("projects/%s/instances/%s/databases/test-database",
+            AbstractSpannerTest.PROJECT_ID, id2.getInstance()),
         databaseAdminClient.getDatabase(id2.getInstance(), "test-database").getId().getName());
   }
 

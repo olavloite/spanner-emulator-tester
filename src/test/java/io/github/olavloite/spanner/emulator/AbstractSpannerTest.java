@@ -42,7 +42,7 @@ public abstract class AbstractSpannerTest {
 
   private static final String DEFAULT_HOST = "https://emulator.googlecloudspanner.com:8443";
 
-  protected static final String PROJECT_ID = "test-project";
+  public static final String PROJECT_ID = "test-project-000001";
   protected static String INSTANCE_ID;
   protected static final String DATABASE_ID = "test-database";
 
