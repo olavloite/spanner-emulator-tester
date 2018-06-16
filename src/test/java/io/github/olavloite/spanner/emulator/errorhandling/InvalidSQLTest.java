@@ -1,8 +1,10 @@
 package io.github.olavloite.spanner.emulator.errorhandling;
 
 import static org.junit.Assert.assertEquals;
+import java.util.Arrays;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
@@ -93,4 +95,80 @@ public class InvalidSQLTest extends AbstractSpannerTest {
       }
     });
   }
+
+  @Test
+  public void testSingleUseReadWithInvalidSQL() {
+    // First do an invalid query
+    long count = 0;
+    try (ResultSet rs = getDatabaseClient().singleUse().read("num", KeySet.all(),
+        Arrays.asList("number", "name"))) {
+      while (rs.next()) {
+        count++;
+      }
+    } catch (SpannerException e) {
+      // ignore
+    }
+    assertEquals(0L, count);
+    // now do a valid query
+    try (ResultSet rs = getDatabaseClient().singleUse().read("number", KeySet.all(),
+        Arrays.asList("number", "name"))) {
+      while (rs.next()) {
+        count++;
+      }
+    }
+    assertEquals(NUMBER_OF_ROWS, count);
+  }
+
+  @Test
+  public void testReadOnlyReadWithInvalidSQL() {
+    ReadOnlyTransaction tx = getDatabaseClient().readOnlyTransaction();
+    // First do an invalid query
+    long count = 0;
+    try (ResultSet rs = tx.read("num", KeySet.all(), Arrays.asList("number", "name"))) {
+      while (rs.next()) {
+        count++;
+      }
+    } catch (SpannerException e) {
+      // ignore
+    }
+    assertEquals(0L, count);
+    // now do a valid query
+    try (ResultSet rs = tx.read("number", KeySet.all(), Arrays.asList("number", "name"))) {
+      while (rs.next()) {
+        count++;
+      }
+    }
+    assertEquals(NUMBER_OF_ROWS, count);
+  }
+
+  @Test
+  public void testReadWriteReadWithInvalidSQL() {
+    TransactionRunner tx = getDatabaseClient().readWriteTransaction();
+    tx.run(new TransactionCallable<Void>() {
+      @Override
+      public Void run(TransactionContext transaction) throws Exception {
+        // First do an invalid query
+        long count = 0;
+        try (
+            ResultSet rs = transaction.read("num", KeySet.all(), Arrays.asList("number", "name"))) {
+          while (rs.next()) {
+            count++;
+          }
+        } catch (SpannerException e) {
+          // ignore expected exception
+        }
+        assertEquals(0L, count);
+        // now do a valid query using the same transaction
+        try (ResultSet rs =
+            transaction.read("number", KeySet.all(), Arrays.asList("number", "name"))) {
+          while (rs.next()) {
+            count++;
+          }
+        }
+        assertEquals(NUMBER_OF_ROWS, count);
+        return null;
+      }
+    });
+  }
+
 }
