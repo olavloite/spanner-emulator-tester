@@ -2,7 +2,10 @@ package io.github.olavloite.spanner.emulator.read;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -24,18 +27,23 @@ public class ReadUsingIndexTest extends AbstractSpannerTest {
 
   @AfterClass
   public static void after() {
+    dropIndexNumberName();
     dropNumberTable();
   }
 
   @Test
   public void testReadAll() {
     long count = 0L;
+    List<String> numbers = new ArrayList<String>((int) NUMBER_OF_ROWS);
+    for (long i = 1L; i <= NUMBER_OF_ROWS; i++) {
+      numbers.add(EnglishNumberToWords.convert(i));
+    }
+    Collections.sort(numbers);
     try (ResultSet rs = getDatabaseClient().singleUse().readUsingIndex("number", "idx_number_name",
         KeySet.all(), Arrays.asList("number", "name"))) {
       while (rs.next()) {
+        assertEquals(numbers.get((int) count), rs.getString(1));
         count++;
-        assertEquals(count, rs.getLong(0));
-        assertEquals(EnglishNumberToWords.convert(count), rs.getString(1));
       }
     }
     assertEquals(NUMBER_OF_ROWS, count);
@@ -64,12 +72,12 @@ public class ReadUsingIndexTest extends AbstractSpannerTest {
     try (ResultSet rs = getDatabaseClient().singleUse().readUsingIndex("number", "idx_number_name",
         KeySet.prefixRange(Key.of(key)), Arrays.asList("number", "name"))) {
       while (rs.next()) {
-        assertTrue(rs.getLong(0) >= 50 && rs.getLong(0) < 60);
+        assertEquals(50L, rs.getLong(0));
         assertTrue(rs.getString(1).startsWith("fifty"));
         count++;
       }
     }
-    assertEquals(10L, count);
+    assertEquals(1L, count);
   }
 
 }

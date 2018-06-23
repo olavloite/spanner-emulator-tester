@@ -40,9 +40,10 @@ public abstract class AbstractSpannerTest {
   }
   private static final Log log = LogFactory.getLog(AbstractSpannerTest.class);
 
+  public static final String CLOUDSPANNER_HOST = "https://spanner.googleapis.com";
   private static final String DEFAULT_HOST = "https://emulator.googlecloudspanner.com:8443";
-
-  public static final String PROJECT_ID = "test-project-000001";
+  private static final String DEFAULT_PROJECT_ID = "test-project-000001";
+  private static final String DEFAULT_KEY_FILE = "emulator.json";
   protected static String INSTANCE_ID;
   protected static final String DATABASE_ID = "test-database";
 
@@ -51,41 +52,50 @@ public abstract class AbstractSpannerTest {
   private static DatabaseClient databaseClient;
   private static BatchClient batchClient;
 
+  public static boolean isRunningOnEmulator() {
+    return !CLOUDSPANNER_HOST.equalsIgnoreCase(getHost());
+  }
+
   public static String getHost() {
     return System.getProperty("host", DEFAULT_HOST);
+  }
+
+  public static String getProject() {
+    return System.getProperty("project", DEFAULT_PROJECT_ID);
+  }
+
+  public static String getKeyFile() {
+    return System.getProperty("keyfile", DEFAULT_KEY_FILE);
   }
 
   @BeforeClass
   public static void setup() {
     INSTANCE_ID = "test-instance-" + new Random().nextInt(100000000);
     log.info("Setting up test with instance id " + INSTANCE_ID);
-    try {
-      String credentialsPath = "emulator.json";
-      GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
-      SpannerOptions options = SpannerOptions.newBuilder().setProjectId(PROJECT_ID)
-          .setHost(getHost()).setCredentials(credentials).build();
-      Spanner spanner = options.getService();
-      instanceAdminClient = spanner.getInstanceAdminClient();
-      databaseAdminClient = spanner.getDatabaseAdminClient();
+    String credentialsPath = getKeyFile();
+    GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
+    SpannerOptions options = SpannerOptions.newBuilder().setProjectId(getProject())
+        .setHost(getHost()).setCredentials(credentials).build();
+    Spanner spanner = options.getService();
+    instanceAdminClient = spanner.getInstanceAdminClient();
+    databaseAdminClient = spanner.getDatabaseAdminClient();
 
-      // First delete anything that might be there
-      clearCurrentInstanceAndDatabases();
-      // Then create a new test instance
-      Operation<Instance, CreateInstanceMetadata> createInstance =
-          instanceAdminClient.createInstance(InstanceInfo
-              .newBuilder(InstanceId.of(PROJECT_ID, INSTANCE_ID)).setDisplayName("Test Instance")
-              .setInstanceConfigId(InstanceConfigId.of(PROJECT_ID, "europe-west1")).setNodeCount(1)
-              .build());
-      assertTrue(createInstance.isDone());
-      Operation<Database, CreateDatabaseMetadata> createDatabase =
-          databaseAdminClient.createDatabase(INSTANCE_ID, DATABASE_ID, Collections.emptyList());
-      Database database = createDatabase.waitFor().getResult();
-      databaseClient = spanner.getDatabaseClient(database.getId());
-      batchClient = spanner.getBatchClient(database.getId());
-      log.info("Finished setting up test");
-    } catch (Throwable t) {
-      log.error(t.getMessage(), t);
-    }
+    // First delete anything that might be there
+    clearCurrentInstanceAndDatabases();
+    // Then create a new test instance
+    Operation<Instance, CreateInstanceMetadata> createInstance =
+        instanceAdminClient.createInstance(InstanceInfo
+            .newBuilder(InstanceId.of(getProject(), INSTANCE_ID)).setDisplayName("Test Instance")
+            .setInstanceConfigId(InstanceConfigId.of(getProject(), "regional-europe-west1"))
+            .setNodeCount(1).build());
+    createInstance = createInstance.waitFor();
+    assertTrue(createInstance.isDone());
+    Operation<Database, CreateDatabaseMetadata> createDatabase =
+        databaseAdminClient.createDatabase(INSTANCE_ID, DATABASE_ID, Collections.emptyList());
+    Database database = createDatabase.waitFor().getResult();
+    databaseClient = spanner.getDatabaseClient(database.getId());
+    batchClient = spanner.getBatchClient(database.getId());
+    log.info("Finished setting up test");
   }
 
   @AfterClass
@@ -137,6 +147,14 @@ public abstract class AbstractSpannerTest {
     Operation<Void, UpdateDatabaseDdlMetadata> operation =
         getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID,
             Arrays.asList("create index idx_number_name on number (name)"), null).waitFor();
+    assertTrue(operation.isDone());
+    assertTrue(operation.isSuccessful());
+  }
+
+  protected static void dropIndexNumberName() {
+    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+        getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID,
+            Arrays.asList("drop index idx_number_name"), null).waitFor();
     assertTrue(operation.isDone());
     assertTrue(operation.isSuccessful());
   }

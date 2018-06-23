@@ -38,7 +38,6 @@ public class ResultSetTest extends AbstractSpannerTest {
       }
     });
     expected.expect(SpannerException.class);
-    expected.expectMessage("Transaction with id");
     rs.next();
   }
 

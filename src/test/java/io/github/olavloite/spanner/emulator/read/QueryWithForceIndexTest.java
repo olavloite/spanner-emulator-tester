@@ -7,11 +7,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runners.MethodSorters;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
@@ -31,12 +34,15 @@ public class QueryWithForceIndexTest extends AbstractSpannerTest {
   private static final Log log = LogFactory.getLog(DeleteCascadeTest.class);
   private static final long RECORD_COUNT = 100L;
 
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
+
   @BeforeClass
   public static void before() {
     log.info("Starting to create table with index");
     executeDdl(
-        "CREATE TABLE person (person_id INT64 NOT NULL, FIRST_NAME STRING(100), LAST_NAME STRING(100) NOT NULL) PRIMARY KEY (PERSON_ID)");
-    executeDdl("CREATE index idx_person_last_name on person (last_name)");
+        "CREATE TABLE person (person_id INT64 NOT NULL, FIRST_NAME STRING(100), LAST_NAME STRING(100) NOT NULL) PRIMARY KEY (person_id)");
+    executeDdl("CREATE index idx_person_last_name on person (LAST_NAME)");
     log.info("Finished creating table with index");
   }
 
@@ -89,6 +95,10 @@ public class QueryWithForceIndexTest extends AbstractSpannerTest {
     ReadOnlyTransaction tx = getDatabaseClient().readOnlyTransaction();
     long count = 0L;
     // TODO: The emulator should throw an exception if an invalid index name is specified
+    if (!isRunningOnEmulator()) {
+      thrown.expect(SpannerException.class);
+      thrown.expectMessage("does not have a secondary index called non_existent_index");
+    }
     try (ResultSet rs = tx.executeQuery(
         Statement.of("select * from person@{FORCE_INDEX=non_existent_index} order by last_name"))) {
       String prevLastName = "";

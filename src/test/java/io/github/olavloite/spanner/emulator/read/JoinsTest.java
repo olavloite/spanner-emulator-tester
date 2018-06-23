@@ -39,7 +39,7 @@ public class JoinsTest extends AbstractSpannerTest {
   public static void before() {
     log.info("Starting to create tables for join tests");
     executeDdl(Arrays.asList(
-        "CREATE TABLE person (person_id INT64 NOT NULL, FIRST_NAME STRING(100), LAST_NAME STRING(100) NOT NULL) PRIMARY KEY (PERSON_ID)",
+        "CREATE TABLE person (person_id INT64 NOT NULL, FIRST_NAME STRING(100), LAST_NAME STRING(100) NOT NULL) PRIMARY KEY (person_id)",
         "create table address (address_id int64 not null, street string(100) not null, house_number int64, zipcode string(10) not null, begin_date date not null, end_date date, person_id int64) primary key (address_id)",
         "create index idx_address_person on address (person_id)"));
     log.info("Finished creating tables for join tests");

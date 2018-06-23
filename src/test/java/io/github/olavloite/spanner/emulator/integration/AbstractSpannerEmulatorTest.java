@@ -60,8 +60,8 @@ public abstract class AbstractSpannerEmulatorTest {
     // generate a unique instance id for this test run
     Random rnd = new Random();
     instanceId = "test-instance-" + rnd.nextInt(1000000);
-    credentialsPath = "emulator.json";
-    projectId = AbstractSpannerTest.PROJECT_ID;
+    credentialsPath = AbstractSpannerTest.getKeyFile();
+    projectId = AbstractSpannerTest.getProject();
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
     Builder builder = SpannerOptions.newBuilder();
     builder.setProjectId(projectId);
