@@ -65,31 +65,31 @@ public class AlterTableTest extends AbstractSpannerTest {
 
     // and now change them back into nullable columns
     assertFalse(isNullable("col1"));
-    executeDdl("alter table test alter column col1 bool null");
+    executeDdl("alter table test alter column col1 bool");
     assertTrue(isNullable("col1"));
 
     assertFalse(isNullable("col2"));
-    executeDdl("alter table test alter column col2 bytes(16) null");
+    executeDdl("alter table test alter column col2 bytes(16)");
     assertTrue(isNullable("col2"));
 
     assertFalse(isNullable("col3"));
-    executeDdl("alter table test alter column col3 float64 null");
+    executeDdl("alter table test alter column col3 float64");
     assertTrue(isNullable("col3"));
 
     assertFalse(isNullable("col4"));
-    executeDdl("alter table test alter column col4 int64 null");
+    executeDdl("alter table test alter column col4 int64");
     assertTrue(isNullable("col4"));
 
     assertFalse(isNullable("col5"));
-    executeDdl("alter table test alter column col5 string(100) null");
+    executeDdl("alter table test alter column col5 string(100)");
     assertTrue(isNullable("col5"));
 
     assertFalse(isNullable("col6"));
-    executeDdl("alter table test alter column col6 date null");
+    executeDdl("alter table test alter column col6 date");
     assertTrue(isNullable("col6"));
 
     assertFalse(isNullable("col7"));
-    executeDdl("alter table test alter column col7 timestamp null");
+    executeDdl("alter table test alter column col7 timestamp");
     assertTrue(isNullable("col7"));
   }
 
@@ -148,7 +148,6 @@ public class AlterTableTest extends AbstractSpannerTest {
     });
     // try to make one of the columns not null
     thrown.expect(SpannerException.class);
-    thrown.expectMessage("contains null values");
     executeDdl("alter table test alter column col3 float64 not null");
   }
 

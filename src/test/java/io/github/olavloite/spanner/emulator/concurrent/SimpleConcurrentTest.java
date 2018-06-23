@@ -51,7 +51,7 @@ public class SimpleConcurrentTest extends AbstractSpannerTest {
 
     protected int getMax() {
       try (ResultSet rs =
-          getReadContext().executeQuery(Statement.of("select max(number) from number"))) {
+          getReadContext().executeQuery(Statement.of("select max(number.number) from number"))) {
         if (rs.next()) {
           return (int) rs.getLong(0);
         }
@@ -65,7 +65,7 @@ public class SimpleConcurrentTest extends AbstractSpannerTest {
       int max = getMax();
       log.debug("Fetched max");
       assertEquals(100, max);
-      String sql = "select * from number where number>=@p1 and number<=@p2";
+      String sql = "select * from number where number.number>=@p1 and number.number<=@p2";
       for (int i = 0; i < NUMBER_OF_READS; i++) {
         int p1 = rnd.nextInt(max) + 1;
         int p2 = rnd.nextInt(max) + 1;

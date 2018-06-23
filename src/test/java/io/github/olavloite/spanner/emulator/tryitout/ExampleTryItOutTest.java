@@ -105,8 +105,8 @@ public class ExampleTryItOutTest extends AbstractSpannerTest {
         Statement.of(String.format("SELECT ID, NAME FROM %s", MY_TEST_TABLE.toUpperCase())))) {
       while (rs.next()) {
         count++;
-        assertEquals(count, rs.getLong("id"));
-        assertEquals(EnglishNumberToWords.convert(count), rs.getString("name"));
+        assertEquals(count, rs.getLong("ID"));
+        assertEquals(EnglishNumberToWords.convert(count), rs.getString("NAME"));
       }
     }
     assertEquals(3L, count);

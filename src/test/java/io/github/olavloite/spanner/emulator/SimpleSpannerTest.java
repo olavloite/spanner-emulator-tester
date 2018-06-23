@@ -61,8 +61,8 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
   }
 
   private void testSelect() {
-    try (ResultSet rs = getDatabaseClient().singleUse()
-        .executeQuery(Statement.of("select * from number order by number"))) {
+    try (ResultSet rs =
+        getDatabaseClient().singleUse().executeQuery(Statement.of("select * from number"))) {
       long count = 0;
       while (rs.next()) {
         count++;
@@ -91,7 +91,7 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
       }
     }
     try (ResultSet rs = getDatabaseClient().singleUse()
-        .executeQuery(Statement.of("select * from number where number=2"))) {
+        .executeQuery(Statement.of("select * from number where number.number=2"))) {
       assertFalse(rs.next());
     }
   }
@@ -112,8 +112,8 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
         assertEquals(NUMBER_OF_INSERT_ROWS - 6, rs.getLong(0));
       }
     }
-    try (ResultSet rs = getDatabaseClient().singleUse()
-        .executeQuery(Statement.of("select * from number where number in (10,11,12,13,14)"))) {
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(
+        Statement.of("select * from number where number.number in (10,11,12,13,14)"))) {
       assertFalse(rs.next());
     }
   }
@@ -130,7 +130,7 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
       }
     });
     try (ResultSet rs = getDatabaseClient().singleUse()
-        .executeQuery(Statement.of("select * from number where number=3"))) {
+        .executeQuery(Statement.of("select * from number where number.number=3"))) {
       assertTrue(rs.next());
       assertEquals("three", rs.getString("name"));
     }
@@ -149,7 +149,7 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
       }
     });
     try (ResultSet rs = getDatabaseClient().singleUse()
-        .executeQuery(Statement.of("select * from number where number in (4,5,6)"))) {
+        .executeQuery(Statement.of("select * from number where number.number in (4,5,6)"))) {
       long current = 4l;
       while (rs.next()) {
         assertEquals(EnglishNumberToWords.convert(current), rs.getString("name"));
@@ -159,10 +159,9 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
   }
 
   private void testExecuteSqlWithParams() {
-    try (ResultSet rs = getDatabaseClient().singleUse()
-        .executeQuery(Statement
-            .newBuilder("select * from number where number>=@begin and number<@end order by number")
-            .bind("begin").to(10).bind("end").to(15).build())) {
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.newBuilder(
+        "select * from number where number.number>=@begin and number.number<@end order by number")
+        .bind("begin").to(10).bind("end").to(15).build())) {
       long count = 0;
       while (rs.next()) {
         assertEquals(count + 10, rs.getLong("number"));

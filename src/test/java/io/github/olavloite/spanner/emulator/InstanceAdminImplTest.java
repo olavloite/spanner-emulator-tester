@@ -34,10 +34,10 @@ public class InstanceAdminImplTest {
 
   @BeforeClass
   public static void setup() {
-    String credentialsPath = "emulator.json";
+    String credentialsPath = AbstractSpannerTest.getKeyFile();
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
     SpannerOptions options =
-        SpannerOptions.newBuilder().setProjectId(AbstractSpannerTest.PROJECT_ID)
+        SpannerOptions.newBuilder().setProjectId(AbstractSpannerTest.getProject())
             .setCredentials(credentials).setHost(AbstractSpannerTest.getHost()).build();
     Spanner spanner = options.getService();
     instanceAdminClient = spanner.getInstanceAdminClient();
@@ -102,14 +102,39 @@ public class InstanceAdminImplTest {
     Page<InstanceConfig> configs = instanceAdminClient.listInstanceConfigs();
     assertNotNull(configs);
     List<InstanceConfig> configList = Lists.newArrayList(configs.iterateAll().iterator());
-    assertEquals(12, configList.size());
+    assertEquals(14, configList.size());
 
-    assertEquals("Belgium",
-        instanceAdminClient.getInstanceConfig("regional-europe-west1").getDisplayName());
-    assertEquals("Montréal",
+    assertEquals("northamerica-northeast1",
         instanceAdminClient.getInstanceConfig("regional-northamerica-northeast1").getDisplayName());
-    assertEquals("North America, Europe, and Asia",
+    assertEquals("us-central1",
+        instanceAdminClient.getInstanceConfig("regional-us-central1").getDisplayName());
+    assertEquals("us-east1",
+        instanceAdminClient.getInstanceConfig("regional-us-east1").getDisplayName());
+    assertEquals("us-east4",
+        instanceAdminClient.getInstanceConfig("regional-us-east4").getDisplayName());
+    assertEquals("us-west1",
+        instanceAdminClient.getInstanceConfig("regional-us-west1").getDisplayName());
+
+    assertEquals("europe-north1",
+        instanceAdminClient.getInstanceConfig("regional-europe-north1").getDisplayName());
+    assertEquals("europe-west1",
+        instanceAdminClient.getInstanceConfig("regional-europe-west1").getDisplayName());
+    assertEquals("europe-west4",
+        instanceAdminClient.getInstanceConfig("regional-europe-west4").getDisplayName());
+
+    assertEquals("asia-south1",
+        instanceAdminClient.getInstanceConfig("regional-asia-south1").getDisplayName());
+    assertEquals("asia-east1",
+        instanceAdminClient.getInstanceConfig("regional-asia-east1").getDisplayName());
+    assertEquals("asia-northeast1",
+        instanceAdminClient.getInstanceConfig("regional-asia-northeast1").getDisplayName());
+    assertEquals("asia-southeast1",
+        instanceAdminClient.getInstanceConfig("regional-asia-southeast1").getDisplayName());
+
+    assertEquals("United States, Europe, and Asia (Iowa/Oklahoma/Belgium/Taiwan)",
         instanceAdminClient.getInstanceConfig("nam-eur-asia1").getDisplayName());
+    assertEquals("United States (Northern Virginia/South Carolina)",
+        instanceAdminClient.getInstanceConfig("nam3").getDisplayName());
 
     boolean exception = false;
     try {
@@ -122,17 +147,19 @@ public class InstanceAdminImplTest {
   }
 
   private void testCreateInstance() {
-    InstanceId id = InstanceId.of(AbstractSpannerTest.PROJECT_ID,
+    InstanceId id = InstanceId.of(AbstractSpannerTest.getProject(),
         "test-instance-" + new Random().nextInt(1000000));
     Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
         .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance")
             .setInstanceConfigId(
-                InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "regional-europe-west1"))
+                InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
             .setNodeCount(1).build());
-    createdInstances.add(id);
+    operation = operation.waitFor();
     assertNotNull(operation);
+    assertTrue(operation.isSuccessful());
     assertTrue(operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
-        AbstractSpannerTest.PROJECT_ID, id.getInstance())));
+        AbstractSpannerTest.getProject(), id.getInstance())));
+    createdInstances.add(id);
     // check that the instance was created
     assertEquals(1,
         Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
@@ -155,14 +182,19 @@ public class InstanceAdminImplTest {
 
   private void testUpdateInstance() {
     InstanceId id = createdInstances.get(0);
-    Operation<Instance, UpdateInstanceMetadata> operation = instanceAdminClient
-        .updateInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance 2")
-            .setInstanceConfigId(
-                InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "europe-west1"))
-            .setNodeCount(2).build(), InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
+    Operation<Instance, UpdateInstanceMetadata> operation =
+        instanceAdminClient
+            .updateInstance(
+                InstanceInfo.newBuilder(id).setDisplayName("Test Instance 2")
+                    .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.getProject(),
+                        "regional-europe-west1"))
+                    .setNodeCount(2).build(),
+                InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
+    operation = operation.waitFor();
     assertNotNull(operation);
+    assertTrue(operation.isSuccessful());
     assertTrue(operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
-        AbstractSpannerTest.PROJECT_ID, id.getInstance())));
+        AbstractSpannerTest.getProject(), id.getInstance())));
     // check that the instance was updated
     assertEquals("Test Instance 2",
         instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
@@ -174,7 +206,8 @@ public class InstanceAdminImplTest {
     try {
       InstanceId id = createdInstances.get(0);
       instanceAdminClient.createInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance")
-          .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "europe-west1"))
+          .setInstanceConfigId(
+              InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
           .setNodeCount(1).build());
     } catch (SpannerException e) {
       exception = true;
@@ -186,11 +219,15 @@ public class InstanceAdminImplTest {
   private void testUpdateInstanceNotExists() {
     boolean exception = false;
     try {
-      instanceAdminClient.updateInstance(InstanceInfo
-          .newBuilder(InstanceId.of(AbstractSpannerTest.PROJECT_ID, "test-instance2"))
-          .setDisplayName("Test Instance 2")
-          .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "europe-west1"))
-          .setNodeCount(2).build(), InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
+      instanceAdminClient
+          .updateInstance(
+              InstanceInfo
+                  .newBuilder(InstanceId.of(AbstractSpannerTest.getProject(), "test-instance2"))
+                  .setDisplayName("Test Instance 2")
+                  .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.getProject(),
+                      "regional-europe-west1"))
+                  .setNodeCount(2).build(),
+              InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
     } catch (SpannerException e) {
       exception = true;
       assertEquals(ErrorCode.NOT_FOUND, e.getErrorCode());
@@ -199,17 +236,17 @@ public class InstanceAdminImplTest {
   }
 
   private void testCreateAnotherInstance() {
-    InstanceId id = InstanceId.of(AbstractSpannerTest.PROJECT_ID,
+    InstanceId id = InstanceId.of(AbstractSpannerTest.getProject(),
         "another-test-instance-" + new Random().nextInt(1000000));
     Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
         .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Another Test Instance")
             .setInstanceConfigId(
-                InstanceConfigId.of(AbstractSpannerTest.PROJECT_ID, "europe-west1"))
+                InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
             .setNodeCount(1).build());
     createdInstances.add(id);
     assertNotNull(operation);
     assertTrue(operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
-        AbstractSpannerTest.PROJECT_ID, id.getInstance())));
+        AbstractSpannerTest.getProject(), id.getInstance())));
     // check that the instance was created
     assertEquals(2,
         Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()

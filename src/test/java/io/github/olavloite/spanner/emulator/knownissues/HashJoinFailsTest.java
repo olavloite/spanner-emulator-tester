@@ -40,16 +40,18 @@ public class HashJoinFailsTest extends AbstractSpannerTest {
       assertTrue(rs.next());
       assertEquals(1L, rs.getLong("hash join"));
     }
-    // This does not
-    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
-        "select n1.number as `hash join` from number n1 inner hash join number n2 on n1.number=n2.number"))) {
-      assertTrue(rs.next());
-      // the column is automatically renamed to 'join'
-      assertEquals(1L, rs.getLong("join"));
-      // this column won't be found
-      expected.expect(IllegalArgumentException.class);
-      expected.expectMessage("Field not found: hash join");
-      assertEquals(1L, rs.getLong("hash join"));
+    // This does not when running on the emulator
+    if (isRunningOnEmulator()) {
+      try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(
+          "select n1.number as `hash join` from number n1 inner hash join number n2 on n1.number=n2.number"))) {
+        assertTrue(rs.next());
+        // the column is automatically renamed to 'join'
+        assertEquals(1L, rs.getLong("join"));
+        // this column won't be found
+        expected.expect(IllegalArgumentException.class);
+        expected.expectMessage("Field not found: hash join");
+        assertEquals(1L, rs.getLong("hash join"));
+      }
     }
   }
 

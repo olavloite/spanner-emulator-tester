@@ -26,7 +26,7 @@ public class CaseSensitiveSpannerEmulatorTest extends AbstractSpannerEmulatorTes
         getDatabaseAdminClient().updateDatabaseDdl(getDatabaseId().getInstanceId().getInstance(),
             getDatabaseId().getDatabase(),
             Arrays.asList(
-                "CREATE TABLE Number (Number INT64 NOT NULL, Name STRING(100) NOT NULL) PRIMARY KEY (NUMBER)"),
+                "CREATE TABLE Number (Number INT64 NOT NULL, Name STRING(100) NOT NULL) PRIMARY KEY (Number)"),
             null);
     operation = operation.waitFor();
     assertTrue(operation.isDone() && operation.isSuccessful());
@@ -40,7 +40,7 @@ public class CaseSensitiveSpannerEmulatorTest extends AbstractSpannerEmulatorTes
       @Override
       public Void run(TransactionContext transaction) throws Exception {
         transaction.buffer(
-            Mutation.newInsertBuilder("NuMbEr").set("NuMbEr").to(1L).set("NaMe").to("One").build());
+            Mutation.newInsertBuilder("Number").set("NuMbEr").to(1L).set("NaMe").to("One").build());
         return null;
       }
     });
@@ -51,7 +51,7 @@ public class CaseSensitiveSpannerEmulatorTest extends AbstractSpannerEmulatorTes
   public void test3_SelectData() {
     int count = 0;
     DatabaseClient client = getDatabaseClient();
-    try (ResultSet rs = client.singleUse().executeQuery(Statement.of("select * from NuMbEr"))) {
+    try (ResultSet rs = client.singleUse().executeQuery(Statement.of("select * from Number"))) {
       while (rs.next()) {
         count++;
         assertEquals(1L, rs.getLong(0));
