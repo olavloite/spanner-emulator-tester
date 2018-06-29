@@ -1,9 +1,9 @@
 # spanner-emulator-tester [![Build Status](https://travis-ci.org/olavloite/spanner-emulator-tester.svg?branch=master)](https://travis-ci.org/olavloite/spanner-emulator-tester)
 
 Test project for Google Cloud Spanner Emulator.
-Send me an email at koloite@gmail.com if you are interested in a trial account or license for the emulator.
+You can sign up for a trial account for a hosted version of the emulator on https://emulator.googlecloudspanner.com
 
-## Try it out
+## Try it out with a test case
 You could also try the emulator out by writing a small test case and submitting it as a pull request to this project. Have a look at the test class for a simple example that you could use as a template for your own test case: https://github.com/olavloite/spanner-emulator-tester/blob/master/src/test/java/io/github/olavloite/spanner/emulator/tryitout/ExampleTryItOutTest.java . Submit your test case as a pull request and it will automatically be built and tested against an emulator running on a small server.
 
 ## Description
