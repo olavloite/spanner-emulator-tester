@@ -22,9 +22,11 @@ import com.google.cloud.spanner.InstanceId;
 import com.google.cloud.spanner.InstanceInfo;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Operation;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
@@ -33,6 +35,7 @@ import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import com.google.spanner.admin.instance.v1.CreateInstanceMetadata;
 import io.github.olavloite.spanner.emulator.util.CloudSpannerOAuthUtil;
 import io.github.olavloite.spanner.emulator.util.EnglishNumberToWords;
+import io.grpc.Status;
 
 public abstract class AbstractSpannerTest {
   static {
@@ -196,6 +199,78 @@ public abstract class AbstractSpannerTest {
     operation.getResult();
     assertTrue(operation.isDone());
     assertTrue(operation.isSuccessful());
+  }
+
+  protected boolean tableExists(String name) {
+    try (ResultSet rs = getDatabaseClient().singleUse()
+        .executeQuery(Statement
+            .newBuilder("select TABLE_NAME from INFORMATION_SCHEMA.TABLES where TABLE_NAME=@name")
+            .bind("name").to(name).build())) {
+      return rs.next();
+    }
+  }
+
+  protected boolean indexExists(String name) {
+    try (ResultSet rs = getDatabaseClient().singleUse()
+        .executeQuery(Statement
+            .newBuilder("select INDEX_NAME from INFORMATION_SCHEMA.INDEXES where INDEX_NAME=@name")
+            .bind("name").to(name).build())) {
+      return rs.next();
+    }
+  }
+
+  protected boolean isIndexUnique(String name) {
+    try (ResultSet rs = getDatabaseClient().singleUse()
+        .executeQuery(Statement
+            .newBuilder("select IS_UNIQUE from INFORMATION_SCHEMA.INDEXES where INDEX_NAME=@name")
+            .bind("name").to(name).build())) {
+      if (rs.next()) {
+        return rs.getBoolean(0);
+      }
+      throw Status.NOT_FOUND.withDescription(String.format("No index with name %s found", name))
+          .asRuntimeException();
+    }
+  }
+
+  protected boolean isIndexNullFiltered(String name) {
+    try (
+        ResultSet rs = getDatabaseClient().singleUse()
+            .executeQuery(Statement.newBuilder(
+                "select IS_NULL_FILTERED from INFORMATION_SCHEMA.INDEXES where INDEX_NAME=@name")
+                .bind("name").to(name).build())) {
+      if (rs.next()) {
+        return rs.getBoolean(0);
+      }
+      throw Status.NOT_FOUND.withDescription(String.format("No index with name %s found", name))
+          .asRuntimeException();
+    }
+  }
+
+  protected String getIndexParentTable(String name) {
+    try (
+        ResultSet rs = getDatabaseClient().singleUse()
+            .executeQuery(Statement.newBuilder(
+                "select PARENT_TABLE_NAME from INFORMATION_SCHEMA.INDEXES where INDEX_NAME=@name")
+                .bind("name").to(name).build())) {
+      if (rs.next()) {
+        return rs.isNull(0) ? null : rs.getString(0);
+      }
+      throw Status.NOT_FOUND.withDescription(String.format("No index with name %s found", name))
+          .asRuntimeException();
+    }
+  }
+
+  protected String getIndexColumnSortOrder(String index, String column) {
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.newBuilder(
+        "select COLUMN_ORDERING from INFORMATION_SCHEMA.INDEX_COLUMNS where INDEX_NAME=@index and COLUMN_NAME=@column")
+        .bind("index").to(index).bind("column").to(column).build())) {
+      if (rs.next()) {
+        return rs.getString(0);
+      }
+      throw Status.NOT_FOUND
+          .withDescription(String.format("No index column with name %s/%s found", column, index))
+          .asRuntimeException();
+    }
   }
 
 }

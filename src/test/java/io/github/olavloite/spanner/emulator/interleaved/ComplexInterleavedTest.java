@@ -1,6 +1,8 @@
 package io.github.olavloite.spanner.emulator.interleaved;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -152,6 +154,73 @@ public class ComplexInterleavedTest extends AbstractSpannerTest {
         index++;
       }
     }
+  }
+
+  @Test
+  public void test3_CreateInterleavedIndex() {
+    String indexName = "test_create_interleaved_index";
+    assertFalse(indexExists(indexName));
+    executeDdl(String.format(
+        "create index %s on parent2 (parent1_id, array1), interleave in parent1", indexName));
+    assertTrue(indexExists(indexName));
+    assertEquals("parent1", getIndexParentTable(indexName));
+    assertFalse(isIndexUnique(indexName));
+    assertFalse(isIndexNullFiltered(indexName));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "parent1_id"));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "array1"));
+    executeDdl(String.format("drop index %s", indexName));
+    assertFalse(indexExists(indexName));
+  }
+
+  @Test
+  public void test4_CreateInterleavedUniqueIndex() {
+    String indexName = "test_create_interleaved_unique_index";
+    assertFalse(indexExists(indexName));
+    executeDdl(String.format(
+        "create unique index %s on parent2 (parent1_id, parent2_id, array1), interleave in parent1",
+        indexName));
+    assertTrue(indexExists(indexName));
+    assertEquals("parent1", getIndexParentTable(indexName));
+    assertTrue(isIndexUnique(indexName));
+    assertFalse(isIndexNullFiltered(indexName));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "parent1_id"));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "array1"));
+    executeDdl(String.format("drop index %s", indexName));
+    assertFalse(indexExists(indexName));
+  }
+
+  @Test
+  public void test5_CreateInterleavedNullFilteredIndex() {
+    String indexName = "test_create_interleaved_null_filtered_index";
+    assertFalse(indexExists(indexName));
+    executeDdl(String.format(
+        "create null_filtered index %s on parent2 (parent1_id, array1), interleave in parent1",
+        indexName));
+    assertTrue(indexExists(indexName));
+    assertEquals("parent1", getIndexParentTable(indexName));
+    assertFalse(isIndexUnique(indexName));
+    assertTrue(isIndexNullFiltered(indexName));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "parent1_id"));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "array1"));
+    executeDdl(String.format("drop index %s", indexName));
+    assertFalse(indexExists(indexName));
+  }
+
+  @Test
+  public void test6_CreateInterleavedUniqueNullFilteredIndex() {
+    String indexName = "test_create_interleaved_unique_null_filtered_index";
+    assertFalse(indexExists(indexName));
+    executeDdl(String.format(
+        "create unique null_filtered index %s on parent2 (parent1_id, parent2_id, array1), interleave in parent1",
+        indexName));
+    assertTrue(indexExists(indexName));
+    assertEquals("parent1", getIndexParentTable(indexName));
+    assertTrue(isIndexUnique(indexName));
+    assertTrue(isIndexNullFiltered(indexName));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "parent1_id"));
+    assertEquals("ASC", getIndexColumnSortOrder(indexName, "array1"));
+    executeDdl(String.format("drop index %s", indexName));
+    assertFalse(indexExists(indexName));
   }
 
 }
