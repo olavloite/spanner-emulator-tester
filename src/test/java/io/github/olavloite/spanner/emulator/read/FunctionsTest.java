@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.sql.SQLException;
 import java.util.function.BiFunction;
+import java.util.regex.Pattern;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import com.google.cloud.ByteArray;
@@ -365,6 +366,41 @@ public class FunctionsTest extends AbstractSpannerTest {
           assertNotNull(rs.getDouble(i));
         }
         assertNotNull(rs.getDate(rs.getColumnCount() - 1));
+      }
+    }
+  }
+
+  @Test
+  public void testRegexpContains() {
+    //@formatter:off
+    String sql = 
+          "SELECT\n"
+        + "  email,\n"
+        + "  REGEXP_CONTAINS(email, r\"@[a-zA-Z0-9]+\\.[a-zA-Z0-9.]+\") AS is_valid\n"
+        + "FROM\n"
+        + "  (SELECT\n"
+        + "    [\"foo@example.com\", \"bar@example.org\", \"www.example.net\"]\n"
+        + "    AS addresses) urls,\n"
+        + "  UNNEST(addresses) AS email";
+    //@formatter:on
+    Pattern pattern = Pattern.compile("@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+");
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      while (rs.next()) {
+        String email = rs.getString(0);
+        boolean valid = rs.getBoolean(1);
+        assertEquals(pattern.matcher(email).find(), valid);
+      }
+    }
+  }
+
+  @Test
+  public void testCastHexAsInt64() {
+    String sql = "SELECT '0x123' as hex_value, CAST('0x123' as INT64) as hex_to_int";
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      while (rs.next()) {
+        String hexValue = rs.getString("hex_value");
+        long intValue = rs.getLong("hex_to_int");
+        assertEquals(Long.parseLong(hexValue.substring(2), 16), intValue);
       }
     }
   }
