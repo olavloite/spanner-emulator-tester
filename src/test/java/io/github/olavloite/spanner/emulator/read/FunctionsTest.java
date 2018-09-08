@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import org.junit.BeforeClass;
@@ -389,6 +391,256 @@ public class FunctionsTest extends AbstractSpannerTest {
         String email = rs.getString(0);
         boolean valid = rs.getBoolean(1);
         assertEquals(pattern.matcher(email).find(), valid);
+      }
+    }
+  }
+
+  @Test
+  public void testRegexpExtract() {
+    //@formatter:off
+    String sql = 
+          "SELECT\n"
+        + "  REGEXP_EXTRACT(email, r\"^[a-zA-Z0-9_.+-]+\") AS user_name\n"
+        + "FROM\n"
+        + "  (SELECT\n"
+        + "    [\"foo@example.com\", \"bar@example.org\", \"baz@example.com\"]\n"
+        + "    AS addresses) urls,\n"
+        + "  UNNEST(addresses) AS email";
+    //@formatter:on
+    String[] userNames = new String[] {"foo", "bar", "baz"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(userNames[index], rs.getString(0));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testRegexpExtract2() {
+    // @formatter:off
+    String sql = "SELECT\n"
+        + "  REGEXP_EXTRACT(email, r\"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.([a-zA-Z0-9-]+$)\")\n" 
+        + "  AS top_level_domain\n"
+        + "  FROM\n"
+        + "  (SELECT\n"
+        + "    [\"foo@example.com\", \"bar@example.org\", \"baz@example.com\"]\n"
+        + "    AS addresses) urls,\n"
+        + "  UNNEST(addresses) AS email";
+    // @formatter:on
+    String[] domains = new String[] {"com", "org", "com"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(domains[index], rs.getString(0));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testRegexpExtractAll() {
+    // @formatter:off
+    String sql = "SELECT\n"
+        + "  REGEXP_EXTRACT_ALL(code, \"`(.+?)`\") AS example\n" 
+        + "  FROM\n"
+        + "  (SELECT\n"
+        + "    [\"Try `function(x)` or `function(y)`\"]\n"
+        + "    AS functions) funcs,\n"
+        + "  UNNEST(functions) AS code";
+    // @formatter:on
+    List<String> functions = Arrays.asList("function(x)", "function(y)");
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      while (rs.next()) {
+        assertEquals(functions, rs.getStringList(0));
+      }
+    }
+  }
+
+  @Test
+  public void testRegexpReplace() {
+    // @formatter:off
+    String sql = "SELECT\n"
+        + "  REGEXP_REPLACE(heading, r\"^# ([a-zA-Z0-9\\s]+$)\", \"<h1>\\1</h1>\")\n"
+        + "  AS html\n"
+        + "FROM\n"
+        + "  (SELECT '# Heading' AS heading UNION ALL SELECT '# Another heading' AS heading)";
+    // @formatter:on
+    String[] headings = new String[] {"<h1>Heading</h1>", "<h1>Another heading</h1>"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(headings[index], rs.getString(0));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testReplace() {
+    // @formatter:off
+    String sql = "SELECT\n" + 
+        "  REPLACE (dessert, \"pie\", \"cobbler\") as example\n" + 
+        "FROM (SELECT 'apple pie' as dessert UNION ALL SELECT 'blackberry pie' AS dessert UNION ALL SELECT 'cherry pie' as dessert) desserts";
+    // @formatter:on
+    String[] desserts = new String[] {"apple cobbler", "blackberry cobbler", "cherry cobbler"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(desserts[index], rs.getString(0));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testRepeat() {
+    // @formatter:off
+    String sql = "SELECT t, n, REPEAT(t, n) AS REPEAT FROM (\n" + 
+        "  SELECT 'abc' AS t, 3 AS n\n" + 
+        "  UNION ALL\n" +
+        "  SELECT '例子', 2\n" +
+        "  UNION ALL\n" +
+        "  SELECT 'abc', null\n" +
+        "  UNION ALL\n" +
+        "  SELECT null, 3\n" + 
+        ")";
+    // @formatter:on
+    String[] repeats = new String[] {"abcabcabc", "例子例子", null, null};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(repeats[index], rs.isNull("REPEAT") ? null : rs.getString("REPEAT"));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testReverse() {
+    // @formatter:off
+    String sql = "SELECT\n" + 
+        "  sample_string,\n" + 
+        "  REVERSE(sample_string) AS reverse_string,\n" + 
+        "  sample_bytes,\n" + 
+        "  REVERSE(sample_bytes) AS reverse_bytes\n" + 
+        "FROM (\n" + 
+        "  SELECT \"foo\" AS sample_string, b\"bar\" AS sample_bytes UNION ALL\n" + 
+        "  SELECT \"абвгд\" AS sample_string, b\"123\" AS sample_bytes) as example";
+    // @formatter:on
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      while (rs.next()) {
+        assertEquals(new StringBuilder(rs.getString("sample_string")).reverse().toString(),
+            rs.getString("reverse_string"));
+        assertEquals(new StringBuilder(rs.getString("sample_bytes")).reverse().toString(),
+            rs.getString("reverse_bytes"));
+      }
+    }
+  }
+
+  @Test
+  public void testRPad() {
+    // @formatter:off
+    String sql = "SELECT t, len, RPAD(t, len) AS RPAD FROM (\n" + 
+        "  SELECT 'abc' AS t, 5 AS len\n" + 
+        "  UNION ALL\n" +
+        "  SELECT 'abc', 2\n" + 
+        "  UNION ALL\n" +
+        "  SELECT '例子', 4\n" + 
+        ")";
+    // @formatter:on
+    String[] padded = new String[] {"abc  ", "ab", "例子  "};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(padded[index], rs.getString("RPAD"));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testRPad2() {
+    // @formatter:off
+    String sql = "SELECT t, len, RPAD(t, len, pattern) AS RPAD FROM (\n" + 
+        "  SELECT 'abc' AS t, 8 AS len, 'def' as pattern\n" + 
+        "  UNION ALL\n" +
+        "  SELECT 'abc', 5, '-'\n" + 
+        "  UNION ALL\n" +
+        "  SELECT '例子', 5, '中文'\n" + 
+        ")";
+    // @formatter:on
+    String[] padded = new String[] {"abcdefde", "abc--", "例子中文中"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(padded[index], rs.getString("RPAD"));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testRTrim() {
+    // @formatter:off
+    String sql = "SELECT t, RTRIM(t, '*') AS RTRIM FROM (\n" + 
+        "  SELECT '***banana***' AS t\n" + 
+        "  UNION ALL\n" +
+        "  SELECT '***apple***'\n" + 
+        "  UNION ALL\n" +
+        "  SELECT '***orange***'\n" + 
+        ")";
+    // @formatter:on
+    String[] padded = new String[] {"***banana", "***apple", "***orange"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(padded[index], rs.getString("RTRIM"));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testRTrim2() {
+    // @formatter:off
+    String sql = "SELECT t, RTRIM(t, 'xyz') AS RTRIM FROM (\n" + 
+        "  SELECT 'bananaxxx' AS t\n" + 
+        "  UNION ALL\n" +
+        "  SELECT 'appleyyy'\n" + 
+        "  UNION ALL\n" +
+        "  SELECT 'orangezzz'\n" + 
+        "  UNION ALL\n" +
+        "  SELECT 'pearxyz'\n" + 
+        ")";
+    // @formatter:on
+    String[] padded = new String[] {"banana", "apple", "orange", "pear"};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(padded[index], rs.getString("RTRIM"));
+        index++;
+      }
+    }
+  }
+
+  @Test
+  public void testSplit() {
+    // @formatter:off
+    String sql = "SELECT SPLIT(letter_group, \" \") as example\n" + 
+        "FROM (\n" + 
+        "  SELECT \"a b c d\" as letter_group\n" + 
+        "  UNION ALL SELECT \"e f g h\" as letter_group\n" + 
+        "  UNION ALL SELECT \"i j k l\" as letter_group) AS letters";
+    // @formatter:on
+    String[][] padded =
+        new String[][] {{"a", "b", "c", "d"}, {"e", "f", "g", "h"}, {"i", "j", "k", "l"}};
+    try (ResultSet rs = getDatabaseClient().singleUse().executeQuery(Statement.of(sql))) {
+      int index = 0;
+      while (rs.next()) {
+        assertEquals(Arrays.asList(padded[index]), rs.getStringList("example"));
+        index++;
       }
     }
   }
