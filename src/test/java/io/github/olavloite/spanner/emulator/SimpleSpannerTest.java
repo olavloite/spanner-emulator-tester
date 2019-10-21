@@ -5,13 +5,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 import org.junit.Test;
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.KeyRange;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
@@ -37,12 +39,16 @@ public class SimpleSpannerTest extends AbstractSpannerTest {
   }
 
   private void testCreateTable() {
-    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operation =
         getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList(
             "create table number (number int64 not null, name string(100) not null) primary key (number)"),
-            null).waitFor();
+            null);
+    try {
+      operation.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     assertTrue(operation.isDone());
-    assertTrue(operation.isSuccessful());
   }
 
   private void testInsert() {

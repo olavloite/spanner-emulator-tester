@@ -4,16 +4,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 import org.junit.Test;
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.KeyRange;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
@@ -34,9 +36,14 @@ public class CompositePrimaryKeySpannerTest extends AbstractSpannerTest {
   private void createTestTable() {
     String sql =
         "CREATE TABLE number (number int64 not null, name string(100) not null, description string(max)) primary key (number, name)";
-    Operation<Void, UpdateDatabaseDdlMetadata> op = getDatabaseAdminClient()
-        .updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList(sql), null).waitFor();
-    assertTrue(op.isDone() && op.isSuccessful());
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> op = getDatabaseAdminClient()
+        .updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList(sql), null);
+    try {
+      op.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
+    assertTrue(op.isDone());
   }
 
   private void insertTestData() {

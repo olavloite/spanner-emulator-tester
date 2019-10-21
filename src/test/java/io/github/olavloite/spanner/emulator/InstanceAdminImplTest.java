@@ -6,9 +6,11 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.api.gax.paging.Page;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.spanner.ErrorCode;
@@ -19,9 +21,9 @@ import com.google.cloud.spanner.InstanceConfigId;
 import com.google.cloud.spanner.InstanceId;
 import com.google.cloud.spanner.InstanceInfo;
 import com.google.cloud.spanner.InstanceInfo.InstanceField;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.common.collect.Lists;
 import com.google.spanner.admin.instance.v1.CreateInstanceMetadata;
@@ -147,26 +149,32 @@ public class InstanceAdminImplTest {
   }
 
   private void testCreateInstance() {
-    InstanceId id = InstanceId.of(AbstractSpannerTest.getProject(),
-        "test-instance-" + new Random().nextInt(1000000));
-    Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
-        .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance")
-            .setInstanceConfigId(
-                InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
-            .setNodeCount(1).build());
-    operation = operation.waitFor();
-    assertNotNull(operation);
-    assertTrue(operation.isSuccessful());
-    assertTrue(operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
-        AbstractSpannerTest.getProject(), id.getInstance())));
-    createdInstances.add(id);
-    // check that the instance was created
-    assertEquals(1,
-        Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
-            .filter(i -> createdInstances.contains(i.getId())).collect(Collectors.toList()).size());
-    assertEquals("Test Instance",
-        instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
-    assertEquals(1, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
+    try {
+      InstanceId id = InstanceId.of(AbstractSpannerTest.getProject(),
+          "test-instance-" + new Random().nextInt(1000000));
+      OperationFuture<Instance, CreateInstanceMetadata> operation = instanceAdminClient
+          .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Test Instance")
+              .setInstanceConfigId(
+                  InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
+              .setNodeCount(1).build());
+      operation.get();
+      assertNotNull(operation);
+      assertTrue(operation.isDone());
+      assertTrue(
+          operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
+              AbstractSpannerTest.getProject(), id.getInstance())));
+      createdInstances.add(id);
+      // check that the instance was created
+      assertEquals(1,
+          Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
+              .filter(i -> createdInstances.contains(i.getId())).collect(Collectors.toList())
+              .size());
+      assertEquals("Test Instance",
+          instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
+      assertEquals(1, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
   }
 
   private void testGetInstanceNotExists() {
@@ -181,24 +189,28 @@ public class InstanceAdminImplTest {
   }
 
   private void testUpdateInstance() {
-    InstanceId id = createdInstances.get(0);
-    Operation<Instance, UpdateInstanceMetadata> operation =
-        instanceAdminClient
-            .updateInstance(
-                InstanceInfo.newBuilder(id).setDisplayName("Test Instance 2")
-                    .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.getProject(),
-                        "regional-europe-west1"))
-                    .setNodeCount(2).build(),
-                InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
-    operation = operation.waitFor();
-    assertNotNull(operation);
-    assertTrue(operation.isSuccessful());
-    assertTrue(operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
-        AbstractSpannerTest.getProject(), id.getInstance())));
-    // check that the instance was updated
-    assertEquals("Test Instance 2",
-        instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
-    assertEquals(2, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
+    try {
+      InstanceId id = createdInstances.get(0);
+      OperationFuture<Instance, UpdateInstanceMetadata> operation =
+          instanceAdminClient.updateInstance(
+              InstanceInfo.newBuilder(id).setDisplayName("Test Instance 2")
+                  .setInstanceConfigId(InstanceConfigId.of(AbstractSpannerTest.getProject(),
+                      "regional-europe-west1"))
+                  .setNodeCount(2).build(),
+              InstanceField.DISPLAY_NAME, InstanceField.NODE_COUNT);
+      operation.get();
+      assertNotNull(operation);
+      assertTrue(operation.isDone());
+      assertTrue(
+          operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
+              AbstractSpannerTest.getProject(), id.getInstance())));
+      // check that the instance was updated
+      assertEquals("Test Instance 2",
+          instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
+      assertEquals(2, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
   }
 
   private void testCreateInstanceExists() {
@@ -236,24 +248,30 @@ public class InstanceAdminImplTest {
   }
 
   private void testCreateAnotherInstance() {
-    InstanceId id = InstanceId.of(AbstractSpannerTest.getProject(),
-        "another-test-instance-" + new Random().nextInt(1000000));
-    Operation<Instance, CreateInstanceMetadata> operation = instanceAdminClient
-        .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Another Test Instance")
-            .setInstanceConfigId(
-                InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
-            .setNodeCount(1).build());
-    createdInstances.add(id);
-    assertNotNull(operation);
-    assertTrue(operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
-        AbstractSpannerTest.getProject(), id.getInstance())));
-    // check that the instance was created
-    assertEquals(2,
-        Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
-            .filter(i -> createdInstances.contains(i.getId())).collect(Collectors.toList()).size());
-    assertEquals("Another Test Instance",
-        instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
-    assertEquals(1, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
+    try {
+      InstanceId id = InstanceId.of(AbstractSpannerTest.getProject(),
+          "another-test-instance-" + new Random().nextInt(1000000));
+      OperationFuture<Instance, CreateInstanceMetadata> operation = instanceAdminClient
+          .createInstance(InstanceInfo.newBuilder(id).setDisplayName("Another Test Instance")
+              .setInstanceConfigId(
+                  InstanceConfigId.of(AbstractSpannerTest.getProject(), "regional-europe-west1"))
+              .setNodeCount(1).build());
+      createdInstances.add(id);
+      assertNotNull(operation);
+      assertTrue(
+          operation.getName().startsWith(String.format("projects/%s/instances/%s/operations/",
+              AbstractSpannerTest.getProject(), id.getInstance())));
+      // check that the instance was created
+      assertEquals(2,
+          Lists.newArrayList(instanceAdminClient.listInstances().iterateAll().iterator()).stream()
+              .filter(i -> createdInstances.contains(i.getId())).collect(Collectors.toList())
+              .size());
+      assertEquals("Another Test Instance",
+          instanceAdminClient.getInstance(id.getInstance()).getDisplayName());
+      assertEquals(1, instanceAdminClient.getInstance(id.getInstance()).getNodeCount());
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
   }
 
 }

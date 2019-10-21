@@ -4,10 +4,12 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.api.gax.paging.Page;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.spanner.BatchClient;
@@ -21,10 +23,10 @@ import com.google.cloud.spanner.InstanceConfigId;
 import com.google.cloud.spanner.InstanceId;
 import com.google.cloud.spanner.InstanceInfo;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
@@ -72,11 +74,12 @@ public abstract class AbstractSpannerTest {
   }
 
   @BeforeClass
-  public static void setup() {
+  public static void setup() throws InterruptedException, ExecutionException {
     INSTANCE_ID = "test-instance-" + new Random().nextInt(100000000);
     log.info("Setting up test with instance id " + INSTANCE_ID);
     String credentialsPath = getKeyFile();
     GoogleCredentials credentials = CloudSpannerOAuthUtil.getCredentialsFromFile(credentialsPath);
+    log.info("Creating Spanner service");
     SpannerOptions options = SpannerOptions.newBuilder().setProjectId(getProject())
         .setHost(getHost()).setCredentials(credentials).build();
     Spanner spanner = options.getService();
@@ -84,18 +87,21 @@ public abstract class AbstractSpannerTest {
     databaseAdminClient = spanner.getDatabaseAdminClient();
 
     // First delete anything that might be there
+    log.info("Deleting existing databases");
     clearCurrentInstanceAndDatabases();
     // Then create a new test instance
-    Operation<Instance, CreateInstanceMetadata> createInstance =
+    log.info("Creating new test instance");
+    OperationFuture<Instance, CreateInstanceMetadata> createInstance =
         instanceAdminClient.createInstance(InstanceInfo
             .newBuilder(InstanceId.of(getProject(), INSTANCE_ID)).setDisplayName("Test Instance")
             .setInstanceConfigId(InstanceConfigId.of(getProject(), "regional-europe-west1"))
             .setNodeCount(1).build());
-    createInstance = createInstance.waitFor();
+    createInstance.get();
     assertTrue(createInstance.isDone());
-    Operation<Database, CreateDatabaseMetadata> createDatabase =
+    log.info("Creating new test database");
+    OperationFuture<Database, CreateDatabaseMetadata> createDatabase =
         databaseAdminClient.createDatabase(INSTANCE_ID, DATABASE_ID, Collections.emptyList());
-    Database database = createDatabase.waitFor().getResult();
+    Database database = createDatabase.get();
     databaseClient = spanner.getDatabaseClient(database.getId());
     batchClient = spanner.getBatchClient(database.getId());
     log.info("Finished setting up test");
@@ -138,28 +144,40 @@ public abstract class AbstractSpannerTest {
   }
 
   protected static void createNumberTable() {
-    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operation =
         getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList(
             "create table number (number int64 not null, name string(100) not null) primary key (number)"),
-            null).waitFor();
+            null);
+    try {
+      operation.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     assertTrue(operation.isDone());
-    assertTrue(operation.isSuccessful());
   }
 
   protected static void createIndexOnNumberName() {
-    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operation =
         getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID,
-            Arrays.asList("create index idx_number_name on number (name)"), null).waitFor();
+            Arrays.asList("create index idx_number_name on number (name)"), null);
+    try {
+      operation.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     assertTrue(operation.isDone());
-    assertTrue(operation.isSuccessful());
   }
 
   protected static void dropIndexNumberName() {
-    Operation<Void, UpdateDatabaseDdlMetadata> operation =
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operation =
         getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID,
-            Arrays.asList("drop index idx_number_name"), null).waitFor();
+            Arrays.asList("drop index idx_number_name"), null);
+    try {
+      operation.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     assertTrue(operation.isDone());
-    assertTrue(operation.isSuccessful());
   }
 
   protected static void insertTestNumbers(long rows) {
@@ -182,11 +200,14 @@ public abstract class AbstractSpannerTest {
   }
 
   protected static void dropNumberTable() {
-    Operation<Void, UpdateDatabaseDdlMetadata> operation = getDatabaseAdminClient()
-        .updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList("drop table number"), null)
-        .waitFor();
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operation = getDatabaseAdminClient()
+        .updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, Arrays.asList("drop table number"), null);
+    try {
+      operation.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     assertTrue(operation.isDone());
-    assertTrue(operation.isSuccessful());
   }
 
   protected static void executeDdl(String ddl) {
@@ -194,11 +215,14 @@ public abstract class AbstractSpannerTest {
   }
 
   protected static void executeDdl(Iterable<String> ddl) {
-    Operation<Void, UpdateDatabaseDdlMetadata> operation =
-        getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, ddl, null).waitFor();
-    operation.getResult();
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> operation =
+        getDatabaseAdminClient().updateDatabaseDdl(INSTANCE_ID, DATABASE_ID, ddl, null);
+    try {
+      operation.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     assertTrue(operation.isDone());
-    assertTrue(operation.isSuccessful());
   }
 
   protected boolean tableExists(String name) {

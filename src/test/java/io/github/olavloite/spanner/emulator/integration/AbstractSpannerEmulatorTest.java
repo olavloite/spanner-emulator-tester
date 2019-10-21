@@ -3,8 +3,10 @@ package io.github.olavloite.spanner.emulator.integration;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
@@ -14,8 +16,8 @@ import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.InstanceConfig;
 import com.google.cloud.spanner.InstanceId;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.SpannerOptions.Builder;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -84,15 +86,23 @@ public abstract class AbstractSpannerEmulatorTest {
     Instance instance = instanceAdminClient.newInstanceBuilder(InstanceId.of(projectId, instanceId))
         .setDisplayName("Test Instance").setInstanceConfigId(config.getId()).setNodeCount(1)
         .build();
-    Operation<Instance, CreateInstanceMetadata> createInstance =
+    OperationFuture<Instance, CreateInstanceMetadata> createInstance =
         instanceAdminClient.createInstance(instance);
-    createInstance = createInstance.waitFor();
+    try {
+      createInstance.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
   }
 
   private static void createDatabase() {
-    Operation<Database, CreateDatabaseMetadata> createDatabase =
+    OperationFuture<Database, CreateDatabaseMetadata> createDatabase =
         spanner.getDatabaseAdminClient().createDatabase(instanceId, DATABASE_ID, Arrays.asList());
-    createDatabase = createDatabase.waitFor();
+    try {
+      createDatabase.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw SpannerExceptionFactory.newSpannerException(e);
+    }
     databaseId = DatabaseId.of(InstanceId.of(projectId, instanceId), DATABASE_ID);
   }
 
